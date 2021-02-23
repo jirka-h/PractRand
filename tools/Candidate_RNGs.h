@@ -1,6 +1,5 @@
 namespace Candidates {
 
-
 /*
 Canidates currently under consideration:
 
@@ -81,6 +80,10 @@ For #2, VeryFast might be better than the current sfc, at least at 32 & 64 bit.
 For #3, sfc_alternative looks better than the current sfc.  
 
 */
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wuninitialized" 
+
 #define POLYMORPHIC_CANDIDATE(rng, bits) \
 class polymorphic_ ## rng ## bits : public PractRand::RNGs::vRNG ## bits {\
 public:\
@@ -835,7 +838,7 @@ public:
 	std::string get_name() const { return implementation.get_name(); }
 };
 
-
+#pragma GCC diagnostic pop
 
 }//namespace Candidates
 #if defined RNG_from_name_h

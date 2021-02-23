@@ -1,7 +1,5 @@
 //#include <vector>
 
-#define PRACTRAND__RANDF_IMPLEMENTATION(RNG)  {return  float(((RNG).raw32() & ((PractRand::Uint32(1) << 24)-1)) *  float(1.0/16777216.0));}
-#define PRACTRAND__RANDLF_IMPLEMENTATION(RNG)  {return double(((RNG).raw64() & ((PractRand::Uint64(1) << 53)-1)) * double(1.0/9007199254740992.0));}
 
 #define PRACTRAND__RANDI_IMPLEMENTATION(max)     \
 	Uint32 mask, tmp;\
@@ -96,11 +94,10 @@ namespace PractRand {
 		static inline Uint16 rotate(Uint16 value, int bits) {return rotate16(value, bits);}
 		static inline Uint32 rotate(Uint32 value, int bits) {return rotate32(value, bits);}
 		static inline Uint64 rotate(Uint64 value, int bits) {return rotate64(value, bits);}
-		//non_uniform.cpp
-		double generate_gaussian_fast(Uint64 raw64);//fast CDF-based hybrid method
-		//double generate_gaussian_high_quality(Uint64 raw192[3]);//slow PDF-based ziggurat method
 		//rand.cpp
 		void test_random_access(PractRand::RNGs::vRNG *rng, PractRand::RNGs::vRNG *known_good, Uint64 period_low64, Uint64 period_high64);
+		float randf_implementation(Uint32 raw);
+		double randlf_implementation(Uint64 raw);
 		//platform_specific.cpp
 		bool add_entropy_automatically( PractRand::RNGs::vRNG *entropy_pool, int milliseconds=0 );
 		Uint64 issue_unique_identifier();

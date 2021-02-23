@@ -154,12 +154,12 @@ be displayed for numbers close to one.
 zero may get rounded to zero.  
 * p-values equal to one (e.g. "p = 1") - values VERY close to one 
 may get rounded to one.  
-* p-values that are only very crudely approxiamted - these can be 
+* p-values that are only very crudely approximated - these can be 
 distinguished from normal p-values by the "~" between the "p" and 
-the "=" in the Processed results column of RNG_test output.  The 
-current version should never produce these, but past and future 
-versions did and will.  Such results may be shown with fewer 
-significant digits displayed than normal p-values.  
+the "=" in the Processed results column of RNG_test output.  Such 
+results may be shown with fewer significant digits displayed than 
+normal p-values.  In the core test set, BRank and TMFn currently 
+produce such low-quality p-values.  
 * "pass" or "fail" in place of a p-value - Some subtests can't 
 produce p-values.  If you must have a p-value, assume that "pass" 
 corresponds to a p-value randomly distributed between 0 and 1, 
@@ -172,7 +172,7 @@ calculated at all under such absurd circumstances, but the test
 still needs some way to report those circumstances occuring.  
 An example results chart showing one of each category of result:
   Test Name                     Raw         Processed     Evaluation
-  DummyTest                     R=  +0.4    p~= 0.4       normal
+  BRank(12):512(2)              R=  +0.4    p~= 0.4       normal
   DC6-9x1Bytes-1                R=  +0.4    p =1-1.1e-3   unusual
   Gap-16:!                      R=  +0.0      "pass"      normal
   Gap-16:A                      R=  +0.5    p = 0.511     normal
@@ -240,12 +240,13 @@ tests are strongly correlated with each other.
 
 1.B.6 - Metatests performed on PractRand p-values:
 Normal PractRand p-values are usually fine for performing meta-tests 
-on.  However, using large numbers of p-values in a single meta-test 
-may be enough to amplify biases in the p-values to noticable levels, 
-depending upon the particular type of metatest used and how tolerant 
-you are of bias in the result.  50 p-values should generally be 
-okay, 5 should always be okay, 50,000 should only be acceptable on 
-a rather limited range of tests and metatests (check emperically).  
+on, assuming no ~ is shown with them.  However, using large numbers 
+of p-values in a single meta-test may be enough to amplify biases in 
+the p-values to noticable levels, depending upon the particular type 
+of metatest used and how tolerant you are of bias in the result.  
+50 p-values should generally be okay, 5 should always be okay, 
+50,000 should only be acceptable on a rather limited range of tests 
+and metatests (check emperically).  
 
 If RNG_test printed a "~" or (for those linking with PractRand 
 directly) TestResult had a type with BAD in the name (eg TYPE_BAD_P), 
@@ -272,6 +273,14 @@ Simultaneous failures on multiple unrelated tests often means that the
 PRNGs cycle length was exhausted, or it otherwise changed behaviors to 
 something awful near the end of testing.  
 
+There are currently 7 tests in the core test set: one 
+parameterization each of BCFN, DC6, Gap-16, FPF, BRank, mod3n, and 
+TMFn.  These 7 are not created equal.  The first four of those 
+spend a lot of time trying to detect broad categories of biases.  
+The last three are only alotted tiny amounts of CPU time, but they 
+try to catch narrowly defined type of bias that are known to slip 
+past the broader tests sometimes.  
+
 Failures on short-ranged tests, especially DC6 parameterizations, are 
 typical of small chaotic PRNGs with insufficient mixing / avalanche.  
 Failures on FPF parameterizations can have similar meaning.  However, 
@@ -296,10 +305,33 @@ spacings than expected, seen most often on single-cycle PRNGs and
 sometimes on rc4-like PRNGs.  
 
 Failures on BRank suggest that in some way the PRNG output, or at 
-least part of it, was extremely linear, producable strictly by xoring 
-bits of previous PRNG output.  This is classically seen on LFSRs / 
-GFSRs, but sometimes it shows up on PRNGs that are *supposed* to be 
-chaotic, but actually have some component that isn't really.  
+least part of it, was extremely linear, producable strictly by 
+xoring bits of previous PRNG output.  This is classically seen on 
+LFSRs / GFSRs, but sometimes it shows up on PRNGs that are 
+*supposed* to be chaotic, but actually have some component that 
+isn't really.  
+
+For mod3n failures, where the subtest has a name of the form 
+"mod3n(X):(Y,Z)", look at the value of Y there.  If the Y value 
+is near zero, this corresponds to a short-range correlation.  If 
+the Y value is high it corresponds to a long-range correlation.  
+This actually looks for simple patterns in the value-modulo-3 of 
+the PRNG output.  Most such patterns will be detected by DC6 or 
+BCFN, but those two tests both look at hamming weights to spot 
+such patterns, and once in a while an otherwise very simple bias 
+will show up in such a way that is no impact on the distribution 
+of hamming weights.  You might ask "why 3?  why not 5 or 17?".  
+Some biases will slip past mod3n but could be caught by a 
+hypothetical mod5n.  However, most biases that could be caught 
+by a mod5n but not a mod3n will instead be caught by DC6 or 
+BCFN - the biases that can get past DC6, BCFN, and mod3n, but 
+could get caught by mod5n are very very few.  I think.  
+
+Failures on TMFn mainly happen on LCGs.  TMFn can only find 
+simple long-range patterns that only occur on extremely 
+structured PRNG output.  It's only included because LCGs are 
+popular and all the other included tests are mediocre or 
+worse at detecting LCGs.  
 
 Most failures on the core tests (other thatn BRank) should have 
 started small and gotten steadily worse as more bytes were tested 
@@ -353,6 +385,8 @@ test name / version / implementation / parameterization tried.
 ***********************************************************************
 3. General Information on Interpretting Test Results
 ***********************************************************************
+
+This is all general theory, not anything specific to PractRand.  
 
 3.A - Forms of test results
 
@@ -514,7 +548,7 @@ of PractRand subtests though.)
 ***********************************************************************
 
 gjrand:
-	Very good.  As good as PractRand, perhaps even a hair better.  
+	Very good.  Comparable to PractRand.  
 	I've only used it on linux, I suspect a windows build would be difficult.  
 	Handles all types of RNGs well in my experience.  
 	DO NOT RUN MULTIPLE TESTS AT ONCE.  It will silently fail, producing incorrect results.  
@@ -522,7 +556,7 @@ gjrand:
 	I pipe my data in to it.  I think that's the way it's intended to be used.  
 
 TestU01:
-	Good, but not as good as PractRand or gjrand in my experience.  
+	Decent, but not as good as PractRand or gjrand in my experience.  
 	Difficult to build on windows.  
 	Slightly worse on chaotic PRNGs than non-chaotic PRNGs.  
 	I recommend its SmallCrush, Crush, and BigCrush batteries of tests.  
@@ -542,7 +576,7 @@ RaBiGeTe:
 	it files.  
 
 Dieharder:
-	Not good, but parts of it show promise.  
+	Not good, but parts of it show potential.  
 	*nix-only.  
 	I *strongly* recommend using a customized set of tests for this, never the -a option.  
 	I recommend using the dab_ tests and only those tests.  
@@ -553,8 +587,7 @@ Dieharder:
 	I pipe in my PRNG output, but you can also link with Dieharder (it has a viral license for linking though IIRC)
 
 NIST STS:
-	Don't bother.  No, seriously, don't use this.  You have been warned.  
-	Beware of false positives.  
+	Don't bother.  It has multiple critical problems and no significant strengths.  
 
 Diehard:
 	Don't bother.  It's of historic value only, very badly outdated.  

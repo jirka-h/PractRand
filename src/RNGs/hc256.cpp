@@ -137,7 +137,7 @@ void PractRand::RNGs::Raw::hc256::seed(vRNG *seeder_rng) {//LOCKED, do not chang
 }
 void PractRand::RNGs::Raw::hc256::self_test() {
 	Raw::hc256 rng;
-	Uint32 key_and_iv[16] = {0};
+	Uint32 key_and_iv[16] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 	rng.seed(key_and_iv);
 	if (rng.raw32() != 0x8589075b) issue_error("hc256::self_test() failed");
 	key_and_iv[8] = 1; rng.seed(key_and_iv); key_and_iv[8] = 0;
@@ -145,7 +145,7 @@ void PractRand::RNGs::Raw::hc256::self_test() {
 	key_and_iv[0] = 0x55; rng.seed(key_and_iv); key_and_iv[0] = 0;
 	if (rng.raw32() != 0xfe4a401c) issue_error("hc256::self_test() failed");
 	rng.seed(key_and_iv);
-	Uint32 checksums[16] = {0};
+	Uint32 checksums[16] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 	for (int x = 0; x < 1<<16; x++) {
 		for (int i = 0; i < 16; i++) checksums[i] ^= rng.raw32();
 	}

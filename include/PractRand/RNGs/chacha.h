@@ -2,7 +2,7 @@ namespace PractRand {
 	namespace RNGs {
 		namespace Raw {
 			//implemented in RNGs/chacha.cpp
-#ifdef PRACTRAND_ALIGN_128
+#if defined PRACTRAND_ALIGN_128 && !defined PRACTRAND_NO_SIMD
 			class __declspec(align(16)) chacha {
 #else
 			class chacha {
@@ -44,12 +44,13 @@ namespace PractRand {
 				void seek_forward (Uint64 how_far_low, Uint64 how_far_high);
 				void seek_backward(Uint64 how_far_low, Uint64 how_far_high);
 
-				//normally rounds is 8, 12, or 20, but it can be anywhere from 1 to 255
-				//the default is 20
-				//the author recommends 8 for weak crypto or non-crypto, 12 for moderate crypto, and 20 for strong crypto
-				//I'd say that you can go as low as 4 or 5 rounds without adversely effecting the output for non-cryptographic purposes
-				//when using an odd number of rounds the final transposition gets skipped - this may or may not match other implementations
-				//therefore it is recommended that only even numbers of rounds be used
+				// normally rounds is 8, 12, or 20, but it can be anywhere from 1 to 255
+				// the default is 20
+				// the author recommends 8 for weak crypto or non-crypto, 12 for moderate crypto, and 20 for strong crypto
+				// however, those recommendations are unchanged from the previous Salsa, which mixed significantly slower
+				// I'd say that you can go as low as 4 or 5 rounds without adversely effecting the output for non-cryptographic purposes
+				// when using an odd number of rounds the final transposition gets skipped - this may or may not match other implementations
+				// therefore it is recommended that only even numbers of rounds be used
 				void set_rounds(int rounds_);
 				int get_rounds() const {return rounds;}
 

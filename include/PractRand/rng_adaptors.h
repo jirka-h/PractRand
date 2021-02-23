@@ -25,9 +25,9 @@ namespace PractRand {
 					enum {FLAGS = base_rng::FLAGS & ~ RNGs::FLAG::NEEDS_GENERIC_SEEDING};
 //						enum {RNG_WRAPPER_LEVEL=base_rng::RNG_WRAPPER_LEVEL+1};
 					typedef base_rng base_rng_type;
-					void seed     (Uint64 seed) {StateWalkingObject *walker = int_to_rng_seeder(seed); this->walk_state(walker); delete walker;}
-					void seed     (vRNG *seeder){StateWalkingObject *walker = vrng_to_rng_seeder(seeder); this->walk_state(walker); delete walker;}
-					void autoseed ()            {StateWalkingObject *walker = get_autoseeder(this); this->walk_state(walker); delete walker;}
+					void seed(Uint64 seed) {StateWalkingObject *walker = Internals::int_to_rng_seeder(seed); this->walk_state(walker); delete walker;}
+					void seed(vRNG *seeder){ StateWalkingObject *walker = Internals::vrng_to_rng_seeder(seeder); this->walk_state(walker); delete walker; }
+					void autoseed()        { StateWalkingObject *walker = Internals::get_autoseeder(this); this->walk_state(walker); delete walker; }
 				};
 				template<class base_rng> class ADAPT_SEEDING<base_rng,false> : public base_rng {
 				public:
@@ -35,8 +35,8 @@ namespace PractRand {
 //						enum {RNG_WRAPPER_LEVEL=base_rng::RNG_WRAPPER_LEVEL+1};
 					typedef base_rng base_rng_type;
 					using base_rng :: seed;
-					void seed     (vRNG *seeder){StateWalkingObject *walker = vrng_to_rng_seeder(seeder); this->walk_state(walker); delete walker;}
-					void autoseed ()            {StateWalkingObject *walker = get_autoseeder(this); this->walk_state(walker); delete walker;}
+					void seed(vRNG *seeder){ StateWalkingObject *walker = Internals::vrng_to_rng_seeder(seeder); this->walk_state(walker); delete walker; }
+					void autoseed()            { StateWalkingObject *walker = Internals::get_autoseeder(this); this->walk_state(walker); delete walker; }
 				};
 //*/
 

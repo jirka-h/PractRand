@@ -338,6 +338,7 @@ PractRand::Tests::RawTestCalibrationData_129 *PractRand::Tests::RawTestCalibrati
 class TestCalibrationData {
 	//const PractRand::Tests::RawTestCalibrationData_117 * raw;
 	const PractRand::Tests::RawTestCalibrationData_129 * raw;
+	bool owns_raw_allocation;
 	double p_threshold;
 	double low_sample, high_sample;
 	double low_a, high_a;
@@ -440,10 +441,15 @@ class TestCalibrationData {
 public:
 	TestCalibrationData(const PractRand::Tests::RawTestCalibrationData_117 *raw_) {
 		raw = PractRand::Tests::RawTestCalibrationData_129::convert117to129(raw_);
+		owns_raw_allocation = true;
 		init();
 	}
 	TestCalibrationData(const PractRand::Tests::RawTestCalibrationData_129 *raw_) : raw(raw_) {
+		owns_raw_allocation = false;
 		init();
+	}
+	~TestCalibrationData() {
+		if (owns_raw_allocation) delete raw;
 	}
 
 	double sample_to_suspicion_no_extrapolation(double sample) const {
@@ -490,12 +496,19 @@ public:
 class TestCalibrationManager {
 	std::map<std::string, std::map< Uint64, TestCalibrationData * > > data;
 public:
-	TestCalibrationManager(PractRand::Tests::RawTestCalibrationData_117 *raw_data_array117, PractRand::Tests::RawTestCalibrationData_129 *raw_data_array129) {
+	TestCalibrationManager(const PractRand::Tests::RawTestCalibrationData_117 *raw_data_array117, const PractRand::Tests::RawTestCalibrationData_129 *raw_data_array129) {
 		for (int i = 0; raw_data_array117[i].name; i++) {
 			data[raw_data_array117[i].name][raw_data_array117[i].blocks] = new TestCalibrationData(&raw_data_array117[i]);
 		}
 		for (int i = 0; raw_data_array129[i].name; i++) {
 			data[raw_data_array129[i].name][raw_data_array129[i].blocks] = new TestCalibrationData(&raw_data_array129[i]);
+		}
+	}
+	~TestCalibrationManager() {
+		for (auto it1 = data.begin(); it1 != data.end(); it1++) {
+			for (auto it2 = it1->second.begin(); it2 != it1->second.end(); it2++) {
+				delete it2->second;
+			}
 		}
 	}
 	Uint64 get_minimum_length(std::string name) {
@@ -519,7 +532,7 @@ public:
 		else return current->second;
 	}
 };
-PractRand::Tests::RawTestCalibrationData_117 raw_calibration_data_array117[] = {
+const PractRand::Tests::RawTestCalibrationData_117 raw_calibration_data_array117[] = {
 	/*	This is raw calibration data - I take known good RNGs and run them through tests a bunch of times.
 	Which produced an empirically determined distribution.  
 	Anyway:
@@ -1855,7 +1868,7 @@ void  PractRand::Tests::Rep16::get_results(std::vector<TestResult> &results) {
 		counts2[v]++;
 	}
 	for (unsigned long i = 0; i < counts2.size(); i++) {
-		std::printf("%d: %d\n", i, counts2[i]);
+		std::printf("%ld: %d\n", i, counts2[i]);
 	}
 }
 
@@ -6313,9 +6326,11 @@ void PractRand::Tests::CoupGap::test_blocks(TestBlock *data, int numblocks) {
 
 
 
-PractRand::Tests::BRank::BRank( Uint32 rate_hl2_ ) : rate_hl2(rate_hl2_), in_progress(NULL) {
-	static Uint32 sizes[] = { 
-		128, 256, 384, 512, 768, 1024, 1536, 2048, 3072, 4096, 6<<10, 8<<10, 12<<10, 16<<10, 24<<10, 32<<10, 48<<10, 64<<10, 0
+PractRand::Tests::BRank_old::BRank_old(Uint32 rate_hl2_) : rate_hl2(rate_hl2_), in_progress(NULL) {
+	static Uint32 sizes[] = {
+		128, 256, 384, 512, 768, 1024, 1536, 2048, 3072, 4096, 6 << 10, 8 << 10, 12 << 10, 16 << 10, 24 << 10, 32 << 10, 48 << 10, 64 << 10,
+		//128, 256, 384, 512, 768, 1024, 1280, 1536, 1792, 2048, 2560, 3072, 3584, 4096, 5 << 10, 6 << 10, 6720, 7 << 10, 8 << 10, 9 << 10, 10 << 10, 11 << 10, 11520, 12 << 10, 13 << 10, 13440, 14 << 10, 15 << 10, 16128, 16 << 10, 17 << 10, 18 << 10, 19 << 10, 20160, 20 << 10, 21 << 10, 22 << 10, 23 << 10, 24 << 10, 25 << 10, 26 << 10, 27 << 10, 28 << 10, 29 << 10, 30 << 10, 31 << 10, 32 << 10, 34560, 40320, 48 << 10, 65280, 64 << 10,
+		0
 	};
 	for (int i = 0; true; i++) {
 		int size = sizes[i];
@@ -6333,29 +6348,30 @@ PractRand::Tests::BRank::BRank( Uint32 rate_hl2_ ) : rate_hl2(rate_hl2_), in_pro
 	rate = (Uint64) std::pow(2.0, 0.5 * rate_hl2);
 	in_progress = NULL;
 }
-void PractRand::Tests::BRank::PerSize::reset() {
+void PractRand::Tests::BRank_old::PerSize::reset() {
 	total = 0;
 	for (int i = 0; i < NUM_COUNTS; i++) counts[i] = 0;
 	outliers.resize(0);
 	outliers_overflow = 0;
 }
-void PractRand::Tests::BRank::deinit( ) {
+void PractRand::Tests::BRank_old::deinit() {
 	if (in_progress) delete in_progress;
 	in_progress = NULL;
 }
-void PractRand::Tests::BRank::init( RNGs::vRNG *known_good ) {
+void PractRand::Tests::BRank_old::init(RNGs::vRNG *known_good) {
+	TestBaseclass::init(known_good);
 	for (int i = 0; i < ps.size(); i++) ps[i].reset();
 	saved_time = 0;
 	if (in_progress) delete in_progress;
 	in_progress = NULL;
 	pick_next_size();
 }
-std::string PractRand::Tests::BRank::get_name( ) const {
+std::string PractRand::Tests::BRank_old::get_name() const {
 	std::ostringstream name;
-	name << "BRank(" << rate_hl2 << ")";
+	name << "BRank_old(" << rate_hl2 << ")";
 	return name.str();
 }
-void PractRand::Tests::BRank::get_results(std::vector<TestResult> &results) {
+void PractRand::Tests::BRank_old::get_results(std::vector<TestResult> &results) {
 	long double _base_probs[PerSize::NUM_COUNTS + 1];
 	long double base_score[PerSize::NUM_COUNTS + 1];
 	if (true) {
@@ -6427,7 +6443,7 @@ void PractRand::Tests::BRank::get_results(std::vector<TestResult> &results) {
 		}
 	}
 }
-void PractRand::Tests::BRank::pick_next_size() {
+void PractRand::Tests::BRank_old::pick_next_size() {
 	double best_score = 0;
 	int best = -1;
 	for (int i = 0; i < ps.size(); i++) {
@@ -6464,7 +6480,7 @@ void PractRand::Tests::BRank::pick_next_size() {
 	in_progress->init(ps[size_index].size, ps[size_index].size);
 	blocks_in_progress = 0;
 }
-void PractRand::Tests::BRank::finish_matrix() {
+void PractRand::Tests::BRank_old::finish_matrix() {
 	PerSize &s = ps[size_index];
 	int result = (s.size > 1000) ? in_progress->large_normalize_and_rank() : in_progress->normalize_and_rank();
 	result = s.size - result;
@@ -6480,7 +6496,8 @@ void PractRand::Tests::BRank::finish_matrix() {
 	in_progress = NULL;
 	pick_next_size();
 }
-void PractRand::Tests::BRank::test_blocks(TestBlock *data, int numblocks) {
+void PractRand::Tests::BRank_old::test_blocks(TestBlock *data, int numblocks) {
+	blocks_tested += numblocks;
 	while (numblocks) {
 		PerSize &s = ps[size_index];
 		Uint64 time_needed = s.time_per;
@@ -6500,7 +6517,7 @@ void PractRand::Tests::BRank::test_blocks(TestBlock *data, int numblocks) {
 			blocks_needed -= blocks_in_progress;
 			Uint32 offset = (blocks_in_progress * TestBlock::SIZE) >> (BitMatrix::WORD_BITS_L2 - 3);
 			if (numblocks >= blocks_needed) {//whole matrix
-				in_progress->raw_import(offset, &data[0].as32[0], (bytes - blocks_in_progress * TestBlock::SIZE) >> (BitMatrix::WORD_BITS_L2 - 3));
+				in_progress->raw_import(offset, &data[0].as64[0], (bytes - blocks_in_progress * TestBlock::SIZE) >> (BitMatrix::WORD_BITS_L2 - 3));
 				finish_matrix();//this will reset blocks_in_progress
 				data += blocks_needed;
 				saved_time -= s.time_per;
@@ -6508,7 +6525,7 @@ void PractRand::Tests::BRank::test_blocks(TestBlock *data, int numblocks) {
 				numblocks -= blocks_needed;
 			}
 			else {//partial matrix
-				in_progress->raw_import(offset, &data[0].as32[0], numblocks << (TestBlock::SIZE_L2 - (BitMatrix::WORD_BITS_L2 - 3)));
+				in_progress->raw_import(offset, &data[0].as64[0], numblocks << (TestBlock::SIZE_L2 - (BitMatrix::WORD_BITS_L2 - 3)));
 				blocks_in_progress += numblocks;
 				//data += numblocks; //we're now done here, so need to update the local variable
 				saved_time += rate * numblocks;
@@ -6517,6 +6534,208 @@ void PractRand::Tests::BRank::test_blocks(TestBlock *data, int numblocks) {
 		}
 	}
 }
+
+PractRand::Tests::BRank::BRank(Uint32 rate_hl2_) : rate_hl2(rate_hl2_), in_progress(NULL) {
+	rate = (Uint64)std::pow(2.0, 0.5 * rate_hl2);
+	in_progress = NULL;
+
+	base_probs[0] = 0.2887880950866024212789;
+	for (int i = 1; i < BASE_RANKS; i++) base_probs[i] = base_probs[i - 1] * 2.0 / std::pow((1 << i) - 1, 2);
+
+	long double sum = 0;
+	for (int i = 0; i < BASE_RANKS; i++) sum += base_probs[i];
+	for (int i = 0; i < BASE_RANKS; i++) base_probs[i] /= sum;
+	for (int i = 0; i < BASE_RANKS; i++) base_scores[i] = -std::log(base_probs[i]) / std::log(2.0);
+	long double expected_score = 0;
+	for (int i = 0; i < BASE_RANKS; i++) expected_score += base_scores[i] * base_probs[i];
+	for (int i = 0; i < BASE_RANKS; i++) base_scores[i] -= expected_score;
+	long double score_deviation = 0;
+	for (int i = 0; i < BASE_RANKS; i++) score_deviation += base_scores[i] * base_scores[i] * base_probs[i];
+	score_deviation = std::sqrt(score_deviation);
+	for (int i = 0; i < BASE_RANKS; i++) base_scores[i] /= score_deviation;
+	
+	rank_expected = 0;
+	for (int i = BASE_RANKS - 1; i >= 0; i--) rank_expected += i * base_probs[i];
+	rank_deviation = 0;
+	for (int i = BASE_RANKS - 1; i >= 0; i--) rank_deviation += std::pow(i - rank_expected, 2.0) * base_probs[i];
+	rank_deviation = std::sqrt(rank_deviation);
+}
+void PractRand::Tests::BRank::deinit() {
+	if (in_progress) delete in_progress;
+	in_progress = NULL;
+}
+void PractRand::Tests::BRank::init(RNGs::vRNG *known_good) {
+	TestBaseclass::init(known_good);
+	if (in_progress) delete in_progress;
+	in_progress = NULL;
+	blocks_in_progress = 0;
+
+	for (int i = 0; i < BASE_RANKS; i++) rank_counts[i] = 0;
+	total_count = 0;
+	total_score = 0;
+	total_rank = 0;
+	first_fail_size = 0;
+
+	current_size = 64;
+	size_step = 64;
+	last_size = 0;
+	time_till_next_matrix = time_for_size(current_size);
+	in_progress = new BitMatrix();
+	in_progress->init(current_size, current_size);
+}
+std::string PractRand::Tests::BRank::get_name() const {
+	std::ostringstream name;
+	name << "BRank(" << rate_hl2 << ")";
+	return name.str();
+}
+double PractRand::Tests::BRank::get_score(long relative_rank) {// relative_rank is expected to be a non-negative integer, the size of the (square) matrix minus its rank
+	if (relative_rank < BASE_RANKS) return base_scores[relative_rank];
+	// do linear interpolation when we get past the end of the table
+	double slope = base_scores[BASE_RANKS - 1] - base_scores[BASE_RANKS - 2];
+	double excess_ranks = relative_rank - (BASE_RANKS - 1);
+	return base_scores[BASE_RANKS - 1] + slope * excess_ranks;
+}
+Uint64 PractRand::Tests::BRank::time_for_size(Uint64 matrix_size) const {
+	matrix_size >>= 6;
+	return matrix_size * matrix_size * matrix_size * 256 + matrix_size * matrix_size * 256;
+}
+Uint64 PractRand::Tests::BRank::calculate_size_step(Uint64 matrix_size) const {
+	long l2s;
+	for (l2s = 0; (1 << l2s) < matrix_size; l2s++) ;
+
+	long l2ss = (l2s + 7) >> 1;
+	if (l2ss < 6) l2ss = 6;
+	//return 1 << l2s;
+	return 1 << l2ss;
+}
+void PractRand::Tests::BRank::get_results(std::vector<TestResult> &results) {
+	if (total_count < 1) return;
+	//std::printf("\ncurrent size: %d\n", current_size);
+	if (false) {// chi-squared test
+		enum { REDUCED_SIZE = 6 };
+		double probs2[REDUCED_SIZE];
+		Uint64 counts2[REDUCED_SIZE];
+		for (int i = 0; i < REDUCED_SIZE; i++) {
+			probs2[i] = base_probs[i];
+			counts2[i] = rank_counts[i];
+		}
+		for (int i = REDUCED_SIZE; i < BASE_RANKS; i++) {
+			probs2[REDUCED_SIZE - 1] += base_probs[i];
+			counts2[REDUCED_SIZE - 1] += rank_counts[i];
+		}
+		double chisquared = g_test(REDUCED_SIZE, base_probs, rank_counts);
+		double p = math_chisquared_to_pvalue(chisquared, REDUCED_SIZE - 1);
+		double n = math_chisquared_to_normal(chisquared, REDUCED_SIZE - 1);
+		std::ostringstream buf;	buf << get_name() << ":chi^2:" << (current_size - size_step);
+		results.push_back(TestResult(buf.str(), n, p, total_count > 1000 ? TestResult::TYPE_GOOD_P : TestResult::TYPE_BAD_P, 0.125));
+	}
+	if (true) {// scoring
+		double avg_score = total_score / total_count;
+		double normalized_score = avg_score * std::sqrt(double(total_count));
+		double p = math_normaldist_to_pvalue(normalized_score);
+		std::ostringstream buf;	buf << get_name() << ":score";
+		if (first_fail_size) {
+			buf << ":f" << first_fail_size;
+		}
+		else {
+			buf << ":c" << last_size;
+		}
+
+		if (total_count >= 3) {
+			TestCalibrationData *calib = calibration_manager.get_calibration_data("BRank", total_count);
+			if (total_count >= 32 || normalized_score > 0) {
+				results.push_back(TestResult(buf.str(), normalized_score, -calib->sample_to_suspicion(normalized_score), (total_count > 32) ? TestResult::TYPE_GOOD_S : TestResult::TYPE_BAD_S, 0.25));
+			}
+			else {
+				results.push_back(TestResult(buf.str(), normalized_score, -calib->sample_to_suspicion_no_extrapolation(normalized_score), TestResult::TYPE_BAD_S, 0.125));
+			}
+		}
+		else {
+			results.push_back(TestResult(buf.str(), normalized_score, 1-p, TestResult::TYPE_BAD_P, 0.01));
+		}
+	}
+	if (false) {// sum of ranks
+		double expected = total_count * rank_expected;
+		double difference = total_rank - expected;
+		double normalized = difference / std::sqrt(double(total_count)) / rank_deviation;
+		double p = math_normaldist_to_pvalue(normalized);
+		std::ostringstream buf;	buf << get_name() << ":total:" << (current_size - size_step);
+		results.push_back(TestResult(buf.str(), normalized, p, total_count > 1000 ? TestResult::TYPE_GOOD_P : TestResult::TYPE_BAD_P, 0.125));
+	}
+}
+void PractRand::Tests::BRank::finish_matrix() {
+	long result = (current_size > 1000) ? in_progress->large_normalize_and_rank() : in_progress->normalize_and_rank();
+	result = current_size - result;
+	//std::printf("\n                      finished: %lld (result %d)\n", current_size, result);
+	if (first_fail_size == 0 && result >= 10) {
+		first_fail_size = current_size;
+	}
+	total_count++;
+	total_score += get_score(result);
+	total_rank += result;
+	if (result >= BASE_RANKS) result = BASE_RANKS - 1;
+	rank_counts[result]++;
+
+	blocks_in_progress = 0;
+	delete in_progress;
+	in_progress = NULL;
+	last_size = current_size;
+	current_size += size_step;
+	if (sizeof(void*) <= 4 && current_size >= 32768) current_size = 256;// running out of address space is an issue on 32-bit platforms for larger matrices
+	if (!(current_size & (current_size - 1))) size_step = calculate_size_step(current_size);//consider adjusting size_step at each power of 2, otherwise don't bother with the calculations
+
+	time_till_next_matrix += time_for_size(current_size);
+	in_progress = new BitMatrix();
+	if (!in_progress) issue_error("BRank2::finish_matrix : new BitMatrix failed\n");
+	in_progress->init(current_size, current_size);
+}
+void PractRand::Tests::BRank::test_blocks(TestBlock *data, int numblocks) {
+	blocks_tested += numblocks;
+	while (numblocks) {
+		if (time_till_next_matrix > 0) {//throttle
+			Uint64 blocks_to_skip = (time_till_next_matrix + rate - 1) / rate;
+			if (blocks_to_skip > numblocks) blocks_to_skip = numblocks;
+			//std::printf("\n                      skipping %lld KB\n", blocks_to_skip);
+			data += blocks_to_skip;
+			numblocks -= blocks_to_skip;
+			time_till_next_matrix -= rate * blocks_to_skip;
+		}
+		else {
+			Uint64 bytes_needed = (current_size * current_size) >> 3;//we don't support sizes that aren't a multiple of 8
+			Uint64 blocks_needed = (bytes_needed + TestBlock::SIZE - 1) >> TestBlock::SIZE_L2;//rounding up, so no more than one matrix per block
+			blocks_needed -= blocks_in_progress;
+			Uint64 offset = (blocks_in_progress << TestBlock::SIZE_L2) >> (BitMatrix::WORD_BITS_L2 - 3);
+			if (numblocks < blocks_needed) {
+				//std::printf("\n                      using %lld KB\n", numblocks);
+				in_progress->raw_import(offset, &data[0].as64[0], numblocks << (TestBlock::SIZE_L2 - (BitMatrix::WORD_BITS_L2 - 3)));
+				blocks_in_progress += numblocks;
+				time_till_next_matrix -= rate * numblocks;
+				//data += numblocks;
+				numblocks = 0;
+			}
+			else {
+				//std::printf("\n                      using %lld KB\n", blocks_needed);
+				//std::printf("\n                      finishing...\n");
+				in_progress->raw_import(offset, &data[0].as64[0], (bytes_needed - (blocks_in_progress << TestBlock::SIZE_L2)) >> (BitMatrix::WORD_BITS_L2 - 3));
+				finish_matrix();
+				time_till_next_matrix -= rate * blocks_needed;
+				numblocks -= blocks_needed;
+				data += blocks_needed;
+			}
+		}
+	}
+}
+
+
+
+
+
+
+
+
+
+
+
 
 PractRand::Tests::NearSeq::NearSeq() {
 	//if (false);
@@ -6820,6 +7039,17 @@ void PractRand::Tests::NearSeq::test_blocks(TestBlock *data, int numblocks) {
 	blocks_tested += numblocks;
 }
 
+static std::vector<double> convolve_signals(std::vector<double> s1, std::vector<double> s2) {
+	std::vector<double> rv;
+	if (!s1.size() || !s2.size()) return rv;
+	rv.resize(s1.size() + s2.size() - 1);
+	for (int x = 0; x < s1.size(); x++) {
+		for (int y = 0; y < s2.size(); y++) {
+			rv[x + y] += s1[x] * s2[y];
+		}
+	}
+	return rv;
+}
 PractRand::Tests::NearSeq2::NearSeq2() {
 	//if (false);
 	//else if (BITS_PER_BLOCK == 8) verify_NearSeq_byte_code8(NearSeq_byte_code8);
@@ -6828,16 +7058,60 @@ PractRand::Tests::NearSeq2::NearSeq2() {
 	//else issue_error("NearSeq: what block size?");
 	lookup_table1 = NULL;
 	lookup_table2 = NULL;
+	lookup_table3 = NULL;
 
-	if (EXTRA_FULL_WORDS & 1) issue_error("NearSeq2 - odd number of extra words");
-	if (EXTRA_PARTIAL_WORD_BITS < 0 || EXTRA_PARTIAL_WORD_BITS >= WORD_BITS) issue_error("NearSeq2 - EXTRA_PARTIAL_WORD_BITS value outside of range");
+	if (MAX_HDIST_PER_BLOCK * 2 >= BITS_PER_BLOCK) issue_error();
+	for (int i = 0; i <= MAX_HDIST_PER_BLOCK; i++) base_chances[i] = math_nChooseR(BITS_PER_BLOCK, i);
+	total_base_chances = 0;
+	for (int i = 0; i <= MAX_HDIST_PER_BLOCK; i++) total_base_chances += base_chances[i];
+	prob_of_valid_block = total_base_chances * std::pow(0.5, BITS_PER_BLOCK - 1);
+	prob_of_valid_core = std::pow(prob_of_valid_block, BLOCKS_PER_CORE);
+	for (int i = 0; i <= MAX_HDIST_PER_BLOCK; i++) base_probs[i] = base_chances[i] * std::pow(0.5, BITS_PER_BLOCK - 1);
+	for (int i = 0; i <= MAX_HDIST_PER_BLOCK; i++) normalized_base_probs[i] = base_chances[i] / (long double)total_base_chances;
+
+	if (true) {
+		std::vector<double> base;
+		base.resize(MAX_HDIST_PER_BLOCK + 1);
+		for (int i = 0; i <= MAX_HDIST_PER_BLOCK; i++) base[i] = base_probs[i];
+		std::vector<double> current = base;
+		for (int i = 1; i < BLOCKS_PER_CORE; i++) {
+			current = convolve_signals(current, base);
+		}
+		if (current.size() != MAX_TOTAL_HDIST + 1) issue_error();
+		for (int i = 0; i <= MAX_TOTAL_HDIST; i++) full_probs[i] = current[i];
+	}
+	if (true) {
+		for (int i = 0; i <= MAX_TOTAL_HDIST; i++) hdist_scores[i] = -std::log(full_probs[i] / prob_of_valid_core);
+		double avg = 0;
+		for (int i = 0; i <= MAX_TOTAL_HDIST; i++) avg += hdist_scores[i] * full_probs[i] / prob_of_valid_core;
+		for (int i = 0; i <= MAX_TOTAL_HDIST; i++) hdist_scores[i] -= avg;
+		double avg_sqr = 0;
+		for (int i = 0; i <= MAX_TOTAL_HDIST; i++) avg_sqr += hdist_scores[i] * hdist_scores[i] * full_probs[i] / prob_of_valid_core;
+		double stddev = std::sqrt(avg_sqr);
+		for (int i = 0; i <= MAX_TOTAL_HDIST; i++) hdist_scores[i] /= stddev;
+	}
+
+	if (EXTRA1_FULL_WORDS & 1) issue_error("NearSeq2 - odd number of extra words");
+	if (EXTRA1_PARTIAL_WORD_BITS < 0 || EXTRA1_PARTIAL_WORD_BITS >= WORD_BITS) issue_error("NearSeq2 - EXTRA1_PARTIAL_WORD_BITS value outside of range");
 	if (BITS_PER_BLOCK > 64) issue_error("NearSeq2 - blocks too large");
 	if (MAX_HDIST_PER_BLOCK * 2 > BITS_PER_BLOCK) issue_error("NearSeq2 - noise tolerance exceeds maximum possible");
 }
 void PractRand::Tests::NearSeq2::init(PractRand::RNGs::vRNG *known_good) {
-	_total_cores = 0;
-	_total_invalid_cores = 0;
+	//_total_cores = 0;
+	//_total_valid_cores = 0;
+	//_total_invalid_cores = 0;
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wshift-count-overflow"
 	if (!lookup_table1) {
+		lookup_table3 = new Uint8[MAX_TOTAL_HDIST + 1];
+		for (int i = 0; i <= MAX_TOTAL_HDIST; i++) {
+			int bin = (MAX_TOTAL_HDIST - i) >> HDIST_BIN_SHIFT;
+			if (bin >= HDIST_BINS) bin = HDIST_BINS - 1;
+			lookup_table3[i] = HDIST_BINS - 1 - bin;
+		}
+		for (int i = 0; i < HDIST_BINS; i++) hdist_bin_probs[i] = 0;
+		for (int i = 0; i <= MAX_TOTAL_HDIST; i++) hdist_bin_probs[get_hdist_bin(i)] += full_probs[i];
+
 		if (BITS_PER_BLOCK <= MAX_LOOKUP_L2) {//index directly with block value
 			lookup_table1 = new Sint8[1 << BITS_PER_BLOCK];
 			lookup_table2 = new Uint8[1 << BITS_PER_BLOCK];
@@ -6882,12 +7156,13 @@ void PractRand::Tests::NearSeq2::init(PractRand::RNGs::vRNG *known_good) {
 			}
 		}
 	}
+#pragma GCC diagnostic pop
 	for (int i = 0; i < NUM_BUCKETS; i++) buckets[i].reset();
 	TestBaseclass::init(known_good);
 }
 void PractRand::Tests::NearSeq2::Bucket::reset() {
 	for (int i = 0; i <= MAX_TOTAL_HDIST; i++) core_hdist[i] = 0;
-	for (int b = 0; b < HDIST_BINS; b++) for (int i = 0; i < EXTRA_BITS; i++) extra_counts[b][i] = 0;
+	for (int b = 0; b < HDIST_BINS; b++) for (int i = 0; i < EXTRA1_BITS; i++) extra_counts[b][i] = 0;
 }
 void PractRand::Tests::NearSeq2::deinit() {
 	delete[] lookup_table1;
@@ -6899,7 +7174,26 @@ void PractRand::Tests::NearSeq2::deinit() {
 std::string PractRand::Tests::NearSeq2::get_name() const {
 	return "NearS2";
 }
+bool PractRand::Tests::NearSeq2::is_word_bad(Word word) const {
+	// this should only be used in cases where there is an integer number of blocks per word, and zero extra partial word bits
+	if (BITS_PER_BLOCK > WORD_BITS) issue_error();
+	if (WORD_BITS % BITS_PER_BLOCK) issue_error();
+	if (EXTRA1_PARTIAL_WORD_BITS) issue_error();
+	Sint8 is_bad = 0;
+	for (int i = 0; i < WORD_BITS / BITS_PER_BLOCK; i++) {
+		Word block = word;
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wshift-count-overflow"
+		if (BITS_PER_BLOCK < WORD_BITS) block &= (1 << BITS_PER_BLOCK) - 1;
+		if (BITS_PER_BLOCK * 2 <= WORD_BITS) word >>= BITS_PER_BLOCK;
+#pragma GCC diagnostic pop
+		is_bad |= lookup1(block);
+	}
+	return is_bad < 0;
+}
 bool PractRand::Tests::NearSeq2::is_core_bad(const Word *core) const {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wshift-count-overflow"
 	Sint8 is_bad = 0;
 	if (CORE_WORDS == 1) {
 		Word w = core[0];
@@ -6968,7 +7262,7 @@ bool PractRand::Tests::NearSeq2::is_core_bad(const Word *core) const {
 		if (index != INDEX) issue_error("NearSeq2::is_core_good - internal error");
 		enum { USABLE_BITS = ((CORE_WORDS - 1) * WORD_BITS) % BITS_PER_BLOCK };
 		if (usable_bits != USABLE_BITS) issue_error("NearSeq2::is_core_good - internal error 2");
-		enum { FINAL_WORD_BITS = WORD_BITS - EXTRA_PARTIAL_WORD_BITS };
+		enum { FINAL_WORD_BITS = WORD_BITS - EXTRA1_PARTIAL_WORD_BITS };
 		Word w2 = core[INDEX];
 		w |= w2 << USABLE_BITS;
 		if (USABLE_BITS + FINAL_WORD_BITS <= WORD_BITS - WORD_LEFTOVERS) {
@@ -6988,8 +7282,11 @@ bool PractRand::Tests::NearSeq2::is_core_bad(const Word *core) const {
 		if (is_bad < 0) return true;
 		else return false;
 	}
+#pragma GCC diagnostic pop
 }
 void PractRand::Tests::NearSeq2::core_analysis(const Word *core, int &index, int &ham) const {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wshift-count-overflow"
 	long core_bucket = 0;
 	long bucket_bit = 0;
 	long h = 0;
@@ -7005,19 +7302,19 @@ void PractRand::Tests::NearSeq2::core_analysis(const Word *core, int &index, int
 		Word w = core[0];
 		for (int i = 0; i < WORD_BITS / BITS_PER_BLOCK; i++) {
 			analyze_block(w, core_bucket, bucket_bit++, h);
-			w >>= BITS_PER_BLOCK;
+			if (BITS_PER_BLOCK < WORD_BITS) w >>= BITS_PER_BLOCK;
 		}
 		for (index = 1; index < CORE_WORDS - 1; index++) {
 			w = core[index];
 			for (int i = 0; i < WORD_BITS / BITS_PER_BLOCK; i++) {
 				analyze_block(w, core_bucket, bucket_bit++, h);
-				w >>= BITS_PER_BLOCK;
+				if (BITS_PER_BLOCK < WORD_BITS) w >>= BITS_PER_BLOCK;
 			}
 		}
 		w = core[index];
 		for (int i = 0; i < BLOCKS_PER_CORE - (CORE_WORDS - 1) * (WORD_BITS / BITS_PER_BLOCK); i++) {
 			analyze_block(w, core_bucket, bucket_bit++, h);
-			w >>= BITS_PER_BLOCK;
+			if (BITS_PER_BLOCK < WORD_BITS) w >>= BITS_PER_BLOCK;
 		}
 	}
 	else {//blocks do NOT align to word boundaries
@@ -7052,7 +7349,7 @@ void PractRand::Tests::NearSeq2::core_analysis(const Word *core, int &index, int
 		if (index != INDEX) issue_error("NearSeq2::analyze_core - internal error");
 		enum { USABLE_BITS = ((CORE_WORDS - 1) * WORD_BITS) % BITS_PER_BLOCK };
 		if (usable_bits != USABLE_BITS) issue_error("NearSeq2::analyze_core - internal error 2");
-		enum { FINAL_WORD_BITS = WORD_BITS - EXTRA_PARTIAL_WORD_BITS };
+		enum { FINAL_WORD_BITS = WORD_BITS - EXTRA1_PARTIAL_WORD_BITS };
 		Word w2 = core[INDEX];
 		w |= w2 << USABLE_BITS;
 		if (USABLE_BITS + FINAL_WORD_BITS <= WORD_BITS - WORD_LEFTOVERS) {
@@ -7072,12 +7369,14 @@ void PractRand::Tests::NearSeq2::core_analysis(const Word *core, int &index, int
 	}
 	index = core_bucket;
 	ham = h;
+#pragma GCC diagnostic pop
 }
 int PractRand::Tests::NearSeq2::get_hdist_bin(int hdist) const {
 	// some parameterizations have a wide variety of possible total core hamming weights
 	// to keep the size of Bucket::extra_counts under control, I index them by a function of the hamming weight with more limited range
-	return hdist * HDIST_BINS / (MAX_TOTAL_HDIST + 1);
+	//return hdist * HDIST_BINS / (MAX_TOTAL_HDIST + 1);
 	//this could be done with a lookup table for more speed, but I think it's not called much so there's no point
+	return lookup_table3[hdist];
 }
 void PractRand::Tests::NearSeq2::count_bits_distribution(Word bits, Uint64 *counts, int num) {
 	Uint64 *end = counts + num;
@@ -7090,52 +7389,6 @@ void PractRand::Tests::NearSeq2::count_bits_distribution(Word bits, Uint64 *coun
 void PractRand::Tests::NearSeq2::get_results(std::vector<TestResult> &results) {
 	if (!blocks_tested) return;
 
-	double block_probs[MAX_HDIST_PER_BLOCK + 1];
-	double core_probs[MAX_TOTAL_HDIST + 1];
-	for (int i = 0; i <= MAX_HDIST_PER_BLOCK; i++) block_probs[i] = math_nChooseR(BITS_PER_BLOCK, i) * std::pow(0.5, BITS_PER_BLOCK);
-	double total_block_prob = 0;
-	for (int i = 0; i <= MAX_HDIST_PER_BLOCK; i++) total_block_prob += block_probs[i];
-	for (int i = 0; i <= MAX_HDIST_PER_BLOCK; i++) block_probs[i] /= total_block_prob;
-	if (1) {//populate core_probs
-		for (int i = 0; i <= MAX_TOTAL_HDIST; i++) core_probs[i] = 0;
-		int block_h[BLOCKS_PER_CORE];
-		for (int i = 0; i < BLOCKS_PER_CORE; i++) block_h[i] = 0;
-		bool end = false;
-		while (!end) {
-			double chance = 1.0;
-			int core_h = 0;
-			for (int i = 0; i < BLOCKS_PER_CORE; i++) {
-				chance *= block_probs[block_h[i]];
-				core_h += block_h[i];
-			}
-			core_probs[core_h] += chance;
-			for (int i = 0; true; ) {
-				block_h[i] += 1;
-				if (block_h[i] <= MAX_HDIST_PER_BLOCK) break;
-				block_h[i] = 0;
-				if (++i == BLOCKS_PER_CORE) {
-					end = true;
-					break;
-				}
-			}
-		}
-	}
-	double valid_core_chance = std::pow(total_block_prob * 2, BLOCKS_PER_CORE);
-	double invalid_core_chance = 1.0 - valid_core_chance;
-	Uint64 total_samples = blocks_tested * (TestBlock::SIZE / sizeof(Word)) - (CORE_WORDS + EXTRA_FULL_WORDS - 1);
-	Uint64 total_valid_samples = 0;
-	Uint64 per_bucket_total[NUM_BUCKETS];
-	for (int bucket_index = 0; bucket_index < NUM_BUCKETS; bucket_index++) {
-		Bucket &bucket = buckets[bucket_index];
-		Uint64 total = 0;
-		for (int i = 0; i <= MAX_TOTAL_HDIST; i++) total += bucket.core_hdist[i];
-		per_bucket_total[bucket_index] = total;
-		total_valid_samples += total;
-	}
-	Sint64 total_invalid_samples = total_samples - total_valid_samples;
-	if (total_invalid_samples < 0) issue_error("NearS2::get_results - negative number of invalid samples?");
-
-
 	/*
 		things to check:
 		1. overall distribution of hamming weights within each bucket
@@ -7145,193 +7398,317 @@ void PractRand::Tests::NearSeq2::get_results(std::vector<TestResult> &results) {
 		3. distribution between buckets, and invalid cores
 	*/
 
-	if (total_samples * valid_core_chance < 300) return;//too few to do anything reasonable
+	Uint64 total_cores = blocks_tested * (TestBlock::SIZE / sizeof(Word)) - (CORE_WORDS + EXTRA1_FULL_WORDS - 1);
+	//if (total_cores != _total_cores) issue_error();
+	Uint64 total_valid_cores = 0; for (int b = 0; b < NUM_BUCKETS; b++) for (int i = 0; i <= MAX_TOTAL_HDIST; i++) total_valid_cores += buckets[b].core_hdist[i];
+	//if (total_valid_cores != _total_valid_cores) issue_error();
+	Uint64 total_invalid_cores = total_cores - total_valid_cores;
+	//if (total_invalid_cores != _total_invalid_cores) issue_error();
 
-	//if (total_samples * valid_core_chance / NUM_BUCKETS < 10) {//too few to do anything much, but we can do *something*
-	if (true) {
+	double expected_valid_cores = total_cores * prob_of_valid_core;
+	double expected_invalid_cores = total_cores * (1 - prob_of_valid_core);
+
+	double valid_fraction = total_valid_cores / double(total_cores);
+
+	if (false && expected_invalid_cores > 30 && expected_valid_cores > 30) {
 		G_TEST cores_valid;
-		cores_valid.add_category(total_invalid_samples, invalid_core_chance);
-		cores_valid.add_category(total_valid_samples, valid_core_chance);
+		cores_valid.add_category(total_invalid_cores, 1 - prob_of_valid_core);
+		cores_valid.add_category(total_valid_cores, prob_of_valid_core);
 		cores_valid.finalize();
 
-		Uint64 counts[2] = { Uint64(total_invalid_samples), total_valid_samples };
-		double probs[2] = { invalid_core_chance, valid_core_chance };
+		Uint64 counts[2] = { total_invalid_cores, total_valid_cores };
+		double probs[2] = { 1 - prob_of_valid_core, prob_of_valid_core };
 		double raw1 = cores_valid.get_result();
 		double raw2 = g_test(2, probs, counts);
-		raw2 = math_chisquared_to_normal(raw2, 1);
+		double n1 = math_chisquared_to_normal(cores_valid.get_result(), cores_valid.get_DoF());
+		double n2 = math_chisquared_to_normal(raw2, 1);
+		double p1 = math_chisquared_to_pvalue(cores_valid.get_result(), cores_valid.get_DoF());
+		double p2 = math_chisquared_to_pvalue(raw2, 1);
+
 		std::ostringstream os;
-		os << get_name() << ":cv";
-		results.push_back(TestResult(os.str(),
-			math_chisquared_to_normal(cores_valid.get_result(), cores_valid.get_DoF()),
-			1-math_chisquared_to_pvalue(cores_valid.get_result(), cores_valid.get_DoF()),
-			TestResult::TYPE_GOOD_P, 0.01)
-		);
+		os << get_name() << ":valid1";
+		results.push_back(TestResult(os.str(), n1, 1 - p1, TestResult::TYPE_GOOD_P, 0.01));
+	}
+	if (expected_invalid_cores > 30 && expected_valid_cores > 30) {//dumb, but it was catching some PRNGs ; after changes, they should now be caught by oa_hdist instead, remove this once we're sure
+		double n = valid_fraction - prob_of_valid_core;
+		n *= std::sqrt(total_cores / prob_of_valid_core / (1 - prob_of_valid_core));
+		double p = math_normaldist_to_pvalue(-n);
+
+		std::ostringstream os;
+		os << get_name() << ":valid2";
+		results.push_back(TestResult(os.str(), n, p, TestResult::TYPE_BAD_P, 0.001));
 	}
 
-	if (total_samples * valid_core_chance > 40 * NUM_BUCKETS) {
-		G_TEST bucket_distribution;
-		for (int bucket_index = 0; bucket_index < NUM_BUCKETS; bucket_index++) {
-			bucket_distribution.add_category(per_bucket_total[bucket_index], valid_core_chance / NUM_BUCKETS);
+	if (expected_valid_cores > 60 && total_cores > 300) {// this merges all buckets together and looks at the hdist distribution for the merger
+		Uint64 hdist_counts[MAX_TOTAL_HDIST + 2];
+		for (int i = 0; i <= MAX_TOTAL_HDIST; i++) hdist_counts[i] = 0;
+		for (int b = 0; b < NUM_BUCKETS; b++) {
+			for (int i = 0; i <= MAX_TOTAL_HDIST; i++) hdist_counts[i] += buckets[b].core_hdist[i];
 		}
-		bucket_distribution.add_category(total_invalid_samples, invalid_core_chance);
-		bucket_distribution.finalize();
+		hdist_counts[MAX_TOTAL_HDIST + 1] = total_invalid_cores;
+		double hdist_probs[MAX_TOTAL_HDIST + 2];
+		for (int i = 0; i <= MAX_TOTAL_HDIST; i++) hdist_probs[i] = full_probs[i];
+		hdist_probs[MAX_TOTAL_HDIST + 1] = 1 - prob_of_valid_core;
+
+		int cat = simplify_prob_table(MAX_TOTAL_HDIST + 2, total_cores / 30.0, hdist_probs, hdist_counts, true, true);
+
+		double raw = g_test(cat, hdist_probs, hdist_counts);
+		double n = math_chisquared_to_normal(raw, cat - 1);
+		double p = 1 - math_chisquared_to_pvalue(raw, cat - 1);
+
 		std::ostringstream os;
-		os << get_name() << ":bd";
-		results.push_back(TestResult(os.str(),
-			math_chisquared_to_normal(bucket_distribution.get_result(), bucket_distribution.get_DoF()),
-			math_chisquared_to_pvalue(bucket_distribution.get_result(), bucket_distribution.get_DoF()),
-			TestResult::TYPE_GOOD_P, 0.03)
-		);
+		os << get_name() << ":oa_hdist";
+		results.push_back(TestResult(os.str(), n, p, TestResult::TYPE_BAD_P, 0.1));
 	}
 
-	if (total_valid_samples > 100 * NUM_BUCKETS) {
-		G_TEST core_nearness;
-		core_nearness.set_minimum_prob(10.0 / total_valid_samples);
-		double scale = 1.0 / NUM_BUCKETS;// we're only counting valid cores this time
-		for (int bucket_index = 0; bucket_index < NUM_BUCKETS; bucket_index++) {
+	if (total_valid_cores > NUM_BUCKETS * 5) {// here we look at distribution between buckets at each hdist (including all lower hdists), skipping some hdists to prevent excessive numbers of pvalues
+		Uint64 total_count = 0;
+		Uint64 counts[NUM_BUCKETS];
+		Uint64 threshold = NUM_BUCKETS * 5;
+		for (int i = 0; i < NUM_BUCKETS; i++) counts[i] = 0;
+		for (int h = 0; h <= MAX_TOTAL_HDIST; h++) {
+			for (int b = 0; b < NUM_BUCKETS; b++) {
+				total_count += buckets[b].core_hdist[h];
+				counts[b] += buckets[b].core_hdist[h];
+			}
+			if (total_count < threshold) continue;
+			threshold *= 5;
+
+			double raw = g_test_flat(NUM_BUCKETS, counts);
+			double n = math_chisquared_to_normal(raw, NUM_BUCKETS - 1);
+			double p = math_chisquared_to_pvalue(raw, NUM_BUCKETS - 1);
+			std::ostringstream os;
+			os << get_name() << ":bd@h" << h;
+			results.push_back(TestResult(os.str(), n, 1 - p, TestResult::TYPE_BAD_P, 0.01));
+		}
+	}
+	if (total_valid_cores > NUM_BUCKETS * 30) {// here we look at the hdist distribution within each bucket
+		double worst_n = 0;
+		int worst_b;
+		int worst_p;
+		double total_score = 0;
+		for (int b = 0; b < NUM_BUCKETS; b++) {
+			Uint64 total = 0;
+			Uint64 counts[MAX_TOTAL_HDIST + 1];
+			double bucket_score = 0;
 			for (int h = 0; h <= MAX_TOTAL_HDIST; h++) {
-				core_nearness.add_category(buckets[bucket_index].core_hdist[h], core_probs[h] * scale);
+				counts[h] = buckets[b].core_hdist[h];
+				total += buckets[b].core_hdist[h];
+				double score = buckets[b].core_hdist[h] * hdist_scores[h];
+				bucket_score += score;
 			}
-		}
-		core_nearness.finalize();
-		std::ostringstream os;
-		os << get_name() << ":cn1";
-		results.push_back(TestResult(os.str(),
-			math_chisquared_to_normal(core_nearness.get_result(), core_nearness.get_DoF()),
-			1 - math_chisquared_to_pvalue(core_nearness.get_result(), core_nearness.get_DoF()),
-			TestResult::TYPE_GOOD_P, 0.1)
-			);
-	}
+			total_score += bucket_score * bucket_score;
 
-	if (total_samples * valid_core_chance > 100 * NUM_BUCKETS) {
-		G_TEST core_nearness;
-		core_nearness.set_minimum_prob(10.0 / total_samples);
-		double scale = valid_core_chance / NUM_BUCKETS;
-		for (int bucket_index = 0; bucket_index < NUM_BUCKETS; bucket_index++) {
-			for (int h = 0; h <= MAX_TOTAL_HDIST; h++) {
-				core_nearness.add_category(buckets[bucket_index].core_hdist[h], core_probs[h] * scale);
-			}
-		}
-		core_nearness.add_category(total_invalid_samples, invalid_core_chance);
-		core_nearness.finalize();
-		std::ostringstream os;
-		os << get_name() << ":cn2";
-		results.push_back(TestResult(os.str(),
-			math_chisquared_to_normal(core_nearness.get_result(), core_nearness.get_DoF()),
-			1 - math_chisquared_to_pvalue(core_nearness.get_result(), core_nearness.get_DoF()),
-			TestResult::TYPE_GOOD_P, 0.1)
-			);
-	}
+			if (total < 32) continue;
+			double probs[MAX_TOTAL_HDIST + 1];
+			for (int h = 0; h <= MAX_TOTAL_HDIST; h++) probs[h] = full_probs[h] / prob_of_valid_core;
 
-	/*if (total_samples * valid_core_chance / NUM_BUCKETS > 100) {
-		Uint64 counts[2];
-		double probs[2] = { 0.5, 0.5 };
-		double overall_chisquared;
-		for (int bucket_index = 0; bucket_index < NUM_BUCKETS; bucket_index++) {
-			Uint64 total = per_bucket_total[bucket_index];
-			double bucket_chisquared = 0;
-			for (int i = 0; i < EXTRA_BITS; i++) {
-				counts[0] = buckets[]
+			int cat = simplify_prob_table(MAX_TOTAL_HDIST + 1, total / 16.0, probs, counts, true, true);
+			double raw = g_test(cat, probs, counts);
+			double n = math_chisquared_to_normal(raw, cat - 1);
+			double p = math_chisquared_to_pvalue(raw, cat - 1);
+
+			if (std::fabs(n) > std::fabs(worst_n)) {
+				worst_n = n;
+				worst_b = b;
+				worst_p = p;
 			}
 		}
-	}*/
+		if (total_valid_cores > NUM_BUCKETS * 30 && true) {
+			double seminormalized = total_score / total_valid_cores - 0.5;
+			double normalized = (seminormalized - (NUM_BUCKETS - 1)) / std::sqrt(double(NUM_BUCKETS) - 1);
+			double p = math_chisquared_to_pvalue(seminormalized, NUM_BUCKETS - 1);
+			std::ostringstream os;
+			os << get_name() << ":WB&";
+			results.push_back(TestResult(os.str(), normalized, p, TestResult::TYPE_BAD_P, 0.01));
+		}
+		if (total_valid_cores > NUM_BUCKETS * 50 && worst_n && true) {
+			if (worst_p < 0.5) worst_p *= NUM_BUCKETS;
+			else worst_p = 1 - ((1 - worst_p) * NUM_BUCKETS);
+			if (worst_p < 0 || worst_p > 1) worst_p = 0.5;
+			std::ostringstream os;
+			os << get_name() << ":WB" << worst_b;
+			results.push_back(TestResult(os.str(), worst_n, worst_p, TestResult::TYPE_RAW_NORMAL, 0.01));
+		}
+	}
+	if (total_valid_cores > 10000 * NUM_BUCKETS) {// now we look at the "extra bits"
+		struct Entry {
+			double n;
+			int bucket;
+			int hbin;
+			int ebit;
+		};
+		Entry low, high;
+		low.n = 999999999;
+		high.n = -999999999;
+		Uint64 num_entries = 0;
+		double chi_squared = 0;
+		double chi_squared_DoF = 0;
+		for (int bi = 0; bi < NUM_BUCKETS; bi++) {
+			for (int hb = 0; hb < HDIST_BINS; hb++) {
+				Uint64 sum_counts = 0;
+				//long h = 0;
+				//for (; get_hdist_bin(h) < hb; h++) ;
+				//for (; h <= MAX_TOTAL_HDIST && get_hdist_bin(h) == hb; h++) sum_counts += buckets[bi].core_hdist[h];
+				for (long h = 0; h <= MAX_TOTAL_HDIST; h++) if (get_hdist_bin(h) == hb) sum_counts += buckets[bi].core_hdist[h];
+				if (sum_counts < 9000) continue;
+				num_entries += EXTRA1_BITS;
+				for (int eb = 0; eb < EXTRA1_BITS; eb++) {
+					Uint64 counts[2] = { buckets[bi].extra_counts[hb][eb], sum_counts - buckets[bi].extra_counts[hb][eb] };
+					chi_squared += g_test_flat(2, counts);
+					chi_squared_DoF += 1;
+					double raw = buckets[bi].extra_counts[hb][eb] - 0.5 * sum_counts;
+					double n = raw / std::sqrt(0.25 * sum_counts);
+					double p = math_normaldist_to_pvalue(n);
+					if (n < low.n) {
+						low.n = n;
+						low.bucket = bi;
+						low.hbin = hb;
+						low.ebit = eb;
+					}
+					if (n > high.n) {
+						high.n = n;
+						high.bucket = bi;
+						high.hbin = hb;
+						high.ebit = eb;
+					}
+				}
+			}
+		}
+		if (chi_squared_DoF && true) {
+			std::ostringstream os2;
+			os2 << get_name() << ":EB";
+			double n = math_chisquared_to_normal(chi_squared, chi_squared_DoF);
+			double p = math_chisquared_to_pvalue(chi_squared, chi_squared_DoF);
+			results.push_back(TestResult(os2.str(), n, p, TestResult::TYPE_BAD_P, 0.1));
+		}
+		if (num_entries && true) {
+			std::ostringstream os1;
+			os1 << get_name() << ":EB:L:" << low.bucket << "_" << low.hbin << "_" << low.ebit;
+			double lp = math_normaldist_to_pvalue(low.n) * num_entries;
+			if (lp > 0.5) lp = 0.5;
+			results.push_back(TestResult(os1.str(), low.n, lp, TestResult::TYPE_BAD_P, 0.01));
+			std::ostringstream os2;
+			os2 << get_name() << ":EB:H:" << high.bucket << "_" << high.hbin << "_" << high.ebit;
+			double hp = math_normaldist_to_pvalue(-high.n) * num_entries;
+			if (hp > 0.5) hp = 0.5;
+			results.push_back(TestResult(os2.str(), high.n, hp, TestResult::TYPE_BAD_P, 0.01));
+		}
+	}
 
 	return;
 }
+
 void PractRand::Tests::NearSeq2::test_blocks(TestBlock *data, int numblocks) {
-	int start = blocks_tested ? -(CORE_WORDS + SEQUENCE_WORD_OFFSET - 1) : SEQUENCE_WORD_OFFSET;
-	int end = (numblocks * (TestBlock::SIZE * 8 / WORD_BITS)) - (CORE_WORDS + SEQUENCE_WORD_OFFSET - 1);
+	if (WORD_BITS % BITS_PER_BLOCK == 0 && EXTRA1_PARTIAL_WORD_BITS == 0) {
+		long start = blocks_tested ? -(SEQUENCE_WORD_OFFSET) : SEQUENCE_WORD_OFFSET + CORE_WORDS - 1;
+		long end = numblocks * (TestBlock::SIZE / sizeof(Word)) - (SEQUENCE_WORD_OFFSET);
 
-	for (int pos = start; pos < end; pos++) {
-		/* chances at various settings
-		setting:			64/8		64/8		64/4		32/4		32/8		32/8		16/8		16/8		16/4		desired
-		codable/ideal		3/2			2/1			1/0			1/0			2/1			1/0			2/1			1/0			1/0			--
-		bucketing bits		8			8			16			8			4			4			2			2			4			6 - 16
-		is_word_codable		12.9		20.5 K		1845		43			143			41 K		12			202			6.5			1, or 20 - 50 K
-		is_near_ideal		20.5 K		1.67 B		281 T		16.7 M		40.9 K		268 M		202			16 K		4.0 K		10 K - 1 B
-		looks nice?						.						*			.			.
-
-		not perfectly aligned, no tails:
-
-		setting:            60/6		30/6		60/5		63/3		30/3		30/5		63/7		63/9		63/9
-		codable/ideal		2/1			2/1			2/1			1/0			1/0			2/1			2/1			3/2			3/1
-		bucketing bits		10			5			12			21			10			6			9			7			7
-		is_word_codable     42.4		6.5			1			1			1			1			1.2 K		115			115
-		is_near_ideal       4.0 M		2.0 K		129 K		4.4 T		2 M			719			268 M		165 K		7.2 B
-		looks nice?			*			.			*			.									**			*
-
-		maybe some larger area, or at least not as round numbers? no tails.
-
-		setting:            120/10	120/10	120/12	120/12	96/12	99/9	156/12	156/12	112/8	40/4	256/32	128/16	256/64	256/16
-		codable/ideal		3/2		4/3		4/3		4/2		4/2		3/2		5/4		4/3		3/2		1/0		13/12	6/5		27/18	7/6
-		bucketing bits		12		12		10		10		8		11		13		13		14		10		8		8		4		16
-		is_word_codable     367 K	16.8	13 K	13 K	~2 K	1.7 K	27.8	224 K	87.5	110		44		78.6 K	217		33
-		is_near_ideal       341 B	367 K	227 M	137 T	204 B	159 M	224 K	73 B	35 M	1 B		216 K	10 M	5 B		300 K
-		looks nice?					.		*						*						*		*
-
-		64 bit
-		0	1
-		1	64
-		2	2016
-		3	41664
-		4	635376
-		5	7624512						8303633
-		6	74974368
-		7	621216192
-		8	4426165368
-		9	27540584512
-		10	151473214816				184144458889
-		11	743595781824
-		12	3284214703056
-		13	13136858812224
-		14	47855699958816
-		15	159518999862720				224723513577529
-		16	488526937079580		28 Q	713250450657109
-		17	1379370175283520
-		18	3601688791018080	7 T		5694309416958709
-		19	8719878125622720
-		20	19619725782651120	5 B		34033913325232549
-		21	41107996877935680
-		22	80347448443237920	12 M	155489358646406149
-		23	146721427591999680	867 K	302210786238405829
-		24	250649105469666120	77 K	552859891708071949
-		25	401038568751465792	8.7 K	953898460459537741
-		26	601557853127198688	1.2 K	1555456313586736429
-		27	846636978475316672	217		2402093292062053101
-		28	1118770292985239888	47		3520863585047292989
-		*/
-		Word *core;
-		if (false);
-		else if (WORD_BITS == 8) core = (Word*)&data[0].as8[pos];
-		else if (WORD_BITS == 16) core = (Word*)&data[0].as16[pos];
-		else if (WORD_BITS == 32) core = (Word*)&data[0].as32[pos];
-		else if (WORD_BITS == 64) core = (Word*)&data[0].as64[pos];
-		else issue_error("NearS2 - what word size???");
-
-		_total_cores++;
-		if (is_core_bad(core)) {
-			_total_invalid_cores++;
-			continue;
+		unsigned long invalid_words_window = 0;
+		if (blocks_tested) {
+			for (long pos = start - (CORE_WORDS - 1); pos < start; pos++) {
+				Word w;
+				if (0) ;
+				else if (WORD_BITS == 8) w = data[0].as8[pos];
+				else if (WORD_BITS == 16) w = data[0].as16[pos];
+				else if (WORD_BITS == 32) w = data[0].as32[pos];
+				else if (WORD_BITS == 64) w = data[0].as64[pos];
+				else issue_error("NearS2 - what word size???");
+				invalid_words_window <<= 1;
+				invalid_words_window |= is_word_bad(w) ? 1 : 0;
+			}
 		}
+		else invalid_words_window = CORE_WORDS > 1 ? 1 : 0;
 
-		int bucket_index, hdist;
-		core_analysis(core, bucket_index, hdist);
-		if (bucket_index < 0 || bucket_index > NUM_BUCKETS) issue_error("NearS2::text_blocks bucket_index out of range, bad analysis");
+		for (long pos = start; pos < end; pos++) {
+			//_total_cores++;
+			Word w;
+			if (0) ;
+			else if (WORD_BITS == 8) w = data[0].as8[pos];
+			else if (WORD_BITS == 16) w = data[0].as16[pos];
+			else if (WORD_BITS == 32) w = data[0].as32[pos];
+			else if (WORD_BITS == 64) w = data[0].as64[pos];
+			else issue_error("NearS2 - what word size???");
+			invalid_words_window <<= 1;
+			invalid_words_window |= is_word_bad(w) ? 1 : 0;
+			invalid_words_window &= (1 << NUM_BUCKETS_L2) - 1;
+			if (invalid_words_window) {
+				//_total_invalid_cores++;
+				continue;
+			}
+			//_total_valid_cores++;
+			// optimized for valid cores being relatively rare, like 1 in 40 or less - instead of keeping a running window of the match and validity, we just keep a running window of validity and reconstruct the rest when we need it
 
-		Bucket &bucket = buckets[bucket_index];
-		bucket.core_hdist[hdist]++;
-		int hdist_bin = get_hdist_bin(hdist);
-		Uint64 *extra_pos = &bucket.extra_counts[hdist_bin][0];
-		for (int i = 1; i <= EXTRA_FULL_WORDS / 2; i++) {
-			count_bits_distribution(core[-i], extra_pos);
-			extra_pos += WORD_BITS;
+			Word *core;
+			if (false) ;
+			else if (WORD_BITS == 8) core = (Word*)&data[0].as8[pos];
+			else if (WORD_BITS == 16) core = (Word*)&data[0].as16[pos];
+			else if (WORD_BITS == 32) core = (Word*)&data[0].as32[pos];
+			else if (WORD_BITS == 64) core = (Word*)&data[0].as64[pos];
+			else issue_error("NearS2 - what word size???");
+			core -= CORE_WORDS - 1;
+
+			if (is_core_bad(core)) issue_error();
+			int bucket_index, hdist;
+			core_analysis(core, bucket_index, hdist);
+			if (bucket_index < 0 || bucket_index > NUM_BUCKETS) issue_error("NearS2::text_blocks bucket_index out of range, bad analysis");
+
+			Bucket &bucket = buckets[bucket_index];
+			bucket.core_hdist[hdist]++;
+			int hdist_bin = get_hdist_bin(hdist);
+			Uint64 *extra_pos = &bucket.extra_counts[hdist_bin][0];
+			for (int i = 1; i <= EXTRA1_FULL_WORDS / 2; i++) {
+				count_bits_distribution(core[-i], extra_pos);
+				extra_pos += WORD_BITS;
+			}
+			for (int i = 0; i < EXTRA1_FULL_WORDS / 2; i++) {
+				count_bits_distribution(core[CORE_WORDS + i], extra_pos);
+				extra_pos += WORD_BITS;
+			}
+			if (EXTRA1_PARTIAL_WORD_BITS) issue_error("NearS2 - can't have extra word bits when word is a multiple of block size");
 		}
-		for (int i = 0; i < EXTRA_FULL_WORDS / 2; i++) {
-			count_bits_distribution(core[CORE_WORDS + i], extra_pos);
-			extra_pos += WORD_BITS;
-		}
-		if (EXTRA_PARTIAL_WORD_BITS) {
-			count_bits_distribution(core[CORE_WORDS - 1] >> (WORD_BITS - EXTRA_PARTIAL_WORD_BITS), extra_pos, EXTRA_PARTIAL_WORD_BITS);
+	}
+	else {
+		long start = blocks_tested ? -(CORE_WORDS + SEQUENCE_WORD_OFFSET - 1) : SEQUENCE_WORD_OFFSET + CORE_WORDS - 1;
+		long end = numblocks * (TestBlock::SIZE / sizeof(Word)) - (CORE_WORDS + SEQUENCE_WORD_OFFSET - 1);
+		for (long pos = start; pos < end; pos++) {
+			Word *core;
+			if (false);
+			else if (WORD_BITS == 8) core = (Word*)&data[0].as8[pos];
+			else if (WORD_BITS == 16) core = (Word*)&data[0].as16[pos];
+			else if (WORD_BITS == 32) core = (Word*)&data[0].as32[pos];
+			else if (WORD_BITS == 64) core = (Word*)&data[0].as64[pos];
+			else issue_error("NearS2 - what word size???");
+
+			//_total_cores++;
+			if (is_core_bad(core)) {
+				//_total_invalid_cores++;
+				continue;
+			}
+			//_total_valid_cores++;
+
+			int bucket_index, hdist;
+			core_analysis(core, bucket_index, hdist);
+			if (bucket_index < 0 || bucket_index > NUM_BUCKETS) issue_error("NearS2::test_blocks bucket_index out of range, bad analysis");
+
+			Bucket &bucket = buckets[bucket_index];
+			bucket.core_hdist[hdist]++;
+			int hdist_bin = get_hdist_bin(hdist);
+			Uint64 *extra_pos = &bucket.extra_counts[hdist_bin][0];
+			for (int i = 1; i <= EXTRA1_FULL_WORDS / 2; i++) {
+				count_bits_distribution(core[-i], extra_pos);
+				extra_pos += WORD_BITS;
+			}
+			for (int i = 0; i < EXTRA1_FULL_WORDS / 2; i++) {
+				count_bits_distribution(core[CORE_WORDS + i], extra_pos);
+				extra_pos += WORD_BITS;
+			}
+			if (EXTRA1_PARTIAL_WORD_BITS) {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wshift-count-overflow"
+				count_bits_distribution(core[CORE_WORDS - 1] >> (WORD_BITS - EXTRA1_PARTIAL_WORD_BITS), extra_pos, EXTRA1_PARTIAL_WORD_BITS);
+#pragma GCC diagnostic pop
+			}
 		}
 	}
 	blocks_tested += numblocks;
@@ -7625,13 +8002,11 @@ void PractRand::Tests::mod3n::get_results(std::vector<TestResult> &results) {
 	if (!total_blocks_on) return;
 	for (int level = 0; level < LEVELS; level++) {
 		Uint64 predicted_samples = ((total_blocks_on * TestBlock::SIZE) >> level) - (EXP - 1) * (level + 1);
-		//if (predicted_samples < 200) return;
-		if (predicted_samples < 20) return;//remove me
+		if (predicted_samples < 200) return;
 
 		int effective_EXP = int(std::floor(std::log(predicted_samples) / std::log(4.0) - 2.9));
 		if (effective_EXP < 3) effective_EXP = 3;
 		if (effective_EXP > EXP) effective_EXP = EXP;
-		effective_EXP = 3;////remove me
 
 		int effective_K = int(std::pow(3.0, (double)effective_EXP));
 		double E = predicted_samples / effective_K;

@@ -11,6 +11,7 @@ namespace PractRand {
 				};
 			protected:
 				Uint32 a, b, c, d;
+				bool is_state_bad() const;
 			public:
 				Uint32 raw32();
 				void seed(Uint64 s);
@@ -18,7 +19,7 @@ namespace PractRand {
 				void seed(vRNG *seeder_rng);
 				void seed(Uint32 seed1, Uint32 seed2, Uint32 seed3, Uint32 seed4);//custom seeding
 				void walk_state(StateWalkingObject *walker);
-				//static void self_test();
+				static void self_test();
 			};
 		}
 		

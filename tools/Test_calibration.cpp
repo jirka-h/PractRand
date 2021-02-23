@@ -734,12 +734,11 @@ double find_ziggurat_point(double old_x, double target_area) {
 	return x;
 }
 
-	enum {TABLE_SIZE=1<<7};
+	enum {TABLE_SIZE=1<<3};
 	static float table_y[TABLE_SIZE-1];
 	static float table_x[TABLE_SIZE-1];
 	static double tail_scale, tail_p, final_stripe_area;
-template<class RNG>
-double generate_gaussian( RNG &rng ) {
+double generate_gaussian(PractRand::RNGs::vRNG *rng) {
 	//*/
 	// 
 	// floats(17+4):   3: 26, 6: 29, 8: 32
@@ -750,6 +749,7 @@ double generate_gaussian( RNG &rng ) {
 	// floats(17+8,lf): 
 	static bool inited = false;
 	if (!inited) {
+		for (int i = 0; i <= 16; i++) std::printf("fraction of events more than %.1f standard deviations from the mean is %g\n", i * 0.5, 2 * math_normaldist_to_pvalue(i * -0.5));
 		double a = 0.5 / TABLE_SIZE;
 		//generate initial guesses:
 		{
@@ -778,29 +778,29 @@ double generate_gaussian( RNG &rng ) {
 		std::printf("tail_p = %f; tail_scale = %f;\n", tail_p, tail_scale); 
 	}
 	while (true) {
-		unsigned long stripe = rng.raw16() & (TABLE_SIZE-1);
+		unsigned long stripe = rng->raw16() & (TABLE_SIZE-1);
 		if (stripe < TABLE_SIZE-2) {//middle stripes
-			double x = rng.randf(-1,1) * table_x[stripe+1];
+			double x = rng->randf(-1,1) * table_x[stripe+1];
 			if (std::fabs(x) < table_x[stripe]) return x;
-			double y = rng.randf(table_y[stripe], table_y[stripe+1]);
+			double y = rng->randf(table_y[stripe], table_y[stripe+1]);
 			if (y < gaussian_PDF(x)) return x;
 		}
 		else if (stripe == TABLE_SIZE-2) {//top stripe
-			double x = rng.randf(-1,1) * table_x[0];
+			double x = rng->randf(-1,1) * table_x[0];
 			double base_y = 0.39894228040143270;
-			double y = rng.randf(table_y[0], base_y);
+			double y = rng->randf(table_y[0], base_y);
 			if (y < gaussian_PDF(x)) return x;
 		}
 		else if (stripe == TABLE_SIZE-1) {//bottom stripe
-			double x = rng.randf(-1, 1) * tail_scale;
+			double x = rng->randf(-1, 1) * tail_scale;
 			if (std::fabs(x) < table_x[TABLE_SIZE-2]) return x;
-			double p = rng.randf() * tail_p; 
+			double p = rng->randf() * tail_p; 
 			double n = Tests::math_pvalue_to_normaldist(p);
 			if (x < 0) return n;
 			else return -n;
 		}
-		double p = rng.randlf();
-		return Tests::math_pvalue_to_normaldist(p);
+		//double p = rng->randlf();
+		//return Tests::math_pvalue_to_normaldist(p);
 	}
 	return 0;//*/
 
@@ -992,56 +992,64 @@ double generate_gaussian( RNG &rng ) {
 	return rv;//*/
 
 }
-double generate_gaussian_( PractRand::RNGs::vRNG *rng ) {return generate_gaussian(*rng);}
+
+//#define GENERATE_GAUSSIAN() math_pvalue_to_normaldist(rng.randlf())
+#define GENERATE_GAUSSIAN() generate_gaussian(&rng)
+//#define GENERATE_GAUSSIAN() PractRand::Internals::generate_gaussian_fast(rng.raw64())
+//#define GENERATE_GAUSSIAN() PractRand::Internals::generate_gaussian_high_quality(rng.raw64(), rng.raw64(), rng.raw64())
+
 void test_normal_distribution_a() {
-	PractRand::RNGs::LightWeight::sfc32 rng( PractRand::SEED_AUTO );
-	//PractRand::RNGs::Polymorphic::sfc32 rng( PractRand::SEED_AUTO );
-	generate_gaussian(rng);
+	//PractRand::RNGs::LightWeight::sfc64 rng( PractRand::SEED_AUTO );
+	PractRand::RNGs::Polymorphic::sfc64 rng( PractRand::SEED_AUTO );
+	GENERATE_GAUSSIAN();
 	std::clock_t bench_start, bench_end;
 	bench_start = std::clock();
 	while (bench_start == (bench_end = std::clock())) ;
 	bench_start = bench_end;
 	Uint32 count = 0;
-	while (CLOCKS_PER_SEC*0.5+1 > std::clock_t((bench_end = std::clock())-bench_start)) {
-		double a = generate_gaussian(rng) + generate_gaussian(rng) + generate_gaussian(rng) + generate_gaussian(rng) + generate_gaussian(rng) + generate_gaussian(rng) + generate_gaussian(rng) + generate_gaussian(rng);
-		//generate_gaussian_(&rng); generate_gaussian_(&rng); generate_gaussian_(&rng); generate_gaussian_(&rng);
+	while (CLOCKS_PER_SEC*1.0+1 > std::clock_t((bench_end = std::clock())-bench_start)) {
+		double a = GENERATE_GAUSSIAN() + GENERATE_GAUSSIAN() + GENERATE_GAUSSIAN() + GENERATE_GAUSSIAN() + GENERATE_GAUSSIAN() + GENERATE_GAUSSIAN() + GENERATE_GAUSSIAN() + GENERATE_GAUSSIAN();
 		count += a != -123456789;
 	}
 	double rate = count*8.0 / (double(std::clock_t(bench_end-bench_start))/CLOCKS_PER_SEC);
 	std::printf("gaussian speed: %.3f M / second\n", rate / 1000000.0 );
-	if (false) {
+	if (true) {
 		SampleSet ss; ss.rs.reserve(1<<27);
-		for (int n = 0; n <= 27; n++) {
-			for (int i = (1<<n) - ss.size(); i > 0; i--) ss._add(generate_gaussian(rng));
+		for (int n = 8; n <= 24; n+=4) {
+			for (long i = (1 << n) - ss.size(); i > 0; i--) ss._add(GENERATE_GAUSSIAN());
 			ss._normalize();
 			printf("test_normal_distribution_a0 : 2^%02d: mean:%+.5f, stddev:%.5f\n", n, ss.get_mean(), ss.get_stddev());
 		}
 	}
-	if (false) {
+	if (true) {
 		SampleSet ss; ss.rs.reserve(1<<27);
-		for (int n = 0; n <= 27; n++) {
-			for (int i = (1<<n) - ss.size(); i > 0; i--) ss._add(Tests::math_normaldist_to_pvalue(generate_gaussian(rng)));
+		for (int n = 8; n <= 24; n+=4) {
+			for (long i = (1 << n) - ss.size(); i > 0; i--) ss._add(Tests::math_normaldist_to_pvalue(GENERATE_GAUSSIAN()));
 			ss._normalize();
-			printf("test_normal_distribution_a1 : 2^%02d: %+f\n", n, Tests::test_uniformity(ss));
+			printf("test_normal_distribution_a1 : 2^%02d: uniformity %+f\n", n, Tests::test_uniformity(ss));
 		}
 	}
 	if (true) {
 		enum {TBITS=17};
 		std::vector<Uint64> counts; counts.resize(1<<TBITS, 0);
 		Uint64 total = 0;
-		enum {DISCARD_BITS = 4};
-		const double scale = std::pow(2.0, TBITS*1.0+DISCARD_BITS);
-		const double p_thresh = std::pow(0.5, DISCARD_BITS*1.0);
-		double n_thresh = 999999999999999.0;
-		if (p_thresh < 1) n_thresh = Tests::math_pvalue_to_normaldist(p_thresh);
+		const double p_thresh_low = 0.0;
+		const double p_thresh_high = 1.0;
+		double n_thresh_low = -999999999999999.0; if (p_thresh_low < 1) n_thresh_low = Tests::math_pvalue_to_normaldist(p_thresh_low);
+		double n_thresh_high = 999999999999999.0; if (p_thresh_high < 1) n_thresh_high = Tests::math_pvalue_to_normaldist(p_thresh_high);
+		const double scale = std::pow(2.0, TBITS) / (p_thresh_high - p_thresh_low);
 		for (int n = 16; n <= 40; n++) {
 			while (!(total >> n)) {
 				for (long i = 0; i < 1<<16; ) {
-					double norm = generate_gaussian(rng);
-					if (norm >= n_thresh) continue;
+					double norm = GENERATE_GAUSSIAN();
+					if (norm < n_thresh_low) continue;
+					if (norm > n_thresh_high) continue;
 					double p = Tests::math_normaldist_to_pvalue(norm);
-					Uint32 index = Uint32(std::floor(p*scale));
-					if (index > (1 << TBITS)) PractRand::issue_error();
+					if (p > p_thresh_high || p < p_thresh_low) PractRand::issue_error();
+					double a = p - p_thresh_low;
+					double index_f = a * scale;
+					long index = long(std::floor(index_f));
+					if (index & ~((1L << TBITS) - 1)) PractRand::issue_error();
 					counts[index]++;
 					i++;
 				}
@@ -1120,7 +1128,7 @@ void test_sfc16() {
 		}
 		std::printf("chance of a seed leading to a cycle < 2**40: %g\n", 1 / (1 - after2_24));
 		long double after2_32 = 1;
-		for (unsigned long i = 1; i < 65536 * 65536ul; i++) {
+		for (unsigned long long i = 1; i < 65536 * 65536ull; i++) {
 			after2_32 *= 1 - (1 / (p248 - i));
 		}
 		std::printf("chance of a seed leading to a cycle < 2**48: %f\n", 1 / (1 - after2_32));
@@ -1128,15 +1136,154 @@ void test_sfc16() {
 }
 
 
+void nearseq2() {
+/*	int bits = 64;
+	int blocks = 4;
+	Uint64 sum = 0;
+	for (int i = 0; i < bits/2; i++) {
+		Uint64 ways = math_nCk(bits, i);
+		sum += ways;
+		double fraction = sum / std::pow(2.0, bits - 1);
+		std::printf("%2d!/%2d!/%2d!=%19lld     %19lld       %10.9f   %f\n", bits, bits - i, i, ways, sum, fraction, std::pow(fraction, -blocks));
+	}*/
+	PractRand::RNGs::Polymorphic::sfc64 rng(PractRand::SEED_AUTO);
+	std::printf("autoseed completed\n");
+	enum {
+		C = 2, 
+		N = 512,
+		TIMES_SQRT = 160000
+		/*
+
+		at C==1, we expect it's *like* a chi squared distribution at DoF == 1
+			but multiplied by N
+			so... mean = N, variance = 2 * N^2
+
+		MEAN
+			C	1			2			4			8			16			32
+		N
+		1		
+		2		
+		4		
+		8		7.99		7.99		7.99		7.99		7.99
+		16		15.9800		15.98
+		32		
+		64		63.920
+		128		127.84
+		256		
+		512		511.35
+		1024	
+		2048	
+		4096	
+
+		VARIANCE
+			C	1			2			4			8			16			32
+		N
+		1		
+		2		
+		4		
+		8		127.6		71.748		43.8		29.8		22.87
+		16		510.556		271.3		151.4		91.6		61.7		46.7
+		32		2044		1053.3		558.3		311.0		187.3		125.4
+		64		8171.3		4148.99		2138.07		1132.57		629.86
+		128		32684.9		16469.65	8361.8		4308.0
+		256		130736.0	65624.86	33066.89
+		512					261991.5
+		1024	
+		2048	
+		4096	
+
+		VARIANCE - (N^2*2/C)
+			C	1			2			4			8			16			32
+		N
+		1
+		2
+		4
+		8		-0.4		+7.748		11.8		13.8		14.87
+		16		-1.5		+15.3		23.4		27.6		29.7		30.7
+		32		-4			+29.3		46.3		55.0
+		64		-20.7		+53.01		90.07		108.57
+		128		-83.1		+85.6		169.8		212
+		256		-336		+88.9		298.89
+		512					-152.5
+		1024
+		2048
+		4096
+							N*1			N*1.5		N*1.75
+				N^2 /200	N^2 /400	N^2 /800
+
+		VARIANCE - (N^2*2/C) - (N * (2 - 2/C))
+			C	1			2			4			8			16			32
+		N
+		1
+		2
+		4
+		8					-0.25		
+		16					-0.7
+		32					-2.7
+		64					-11.0
+		128					-42
+		256					-167
+		512					-664.5
+		1024
+		2048
+		4096
+
+		VARIANCE - (N^2*2/C) - (N * (2 - 2/C)) + (N^2 / (200 * C))
+		VARIANCE - (N^2*1.995/C) - (N * (2 - 2/C))
+
+epxected variance:  (N/C) * variance_of( chi_squared( DoF = C ) )
+
+		
+				1			2			4			8			16			32
+				3.0*X		2.0*X		1.5*X		1.25*X		1.125*X		1.0625*X
+
+		16		
+		32		
+		64		
+		128		
+		256		
+
+
+
+		(1 + 2/C) * N + ??? * (???) ^ -(N / C)
+
+		
+		*/
+	};
+	double cs[C];
+	double sum = 0;
+	double sum_sqr = 0;
+	for (long t1 = 0; t1 < TIMES_SQRT; t1++) {
+		for (long t2 = 0; t2 < TIMES_SQRT; t2++) {
+			for (int i = 0; i < C; i++) cs[i] = 0;
+			for (long i = 0; i < N; i++) cs[rng.randi_fast(C)] += rng.gaussian();
+			double value = 0;
+			for (int i = 0; i < C; i++) value += cs[i] * cs[i];
+			sum += value;
+			sum_sqr += value * value;
+		}
+		if (t1 == TIMES_SQRT / 2) std::printf("half done\n");
+	}
+	double mean = sum / TIMES_SQRT / TIMES_SQRT;
+	double mean_sqr = sum_sqr / TIMES_SQRT / TIMES_SQRT;
+	double variance = mean_sqr - mean * mean;
+	std::printf("mean: %f\n", mean);
+	std::printf("variance: %f\n", variance);
+}
+
+
 int main(int argc, char **argv) {
 	PractRand::initialize_PractRand();
+	std::printf("initialized\n");
 	PractRand::self_test_PractRand();
+	std::printf("self-test completed\n");
 
+	nearseq2(); nearseq2(); nearseq2(); nearseq2(); nearseq2(); nearseq2(); nearseq2(); nearseq2();
 	//test_sfc16();
 	//blah_bcfn();
 	//blah_fpf_all2();
 	//blah_fpf();
-	find_test_distributions();
+	//find_test_distributions();
 	//count_period(new PractRand::RNGs::Polymorphic::NotRecommended::xlcg8of64_varqual(28));
 	//verify_test_distributions();
 	//test_normal_distribution_a();

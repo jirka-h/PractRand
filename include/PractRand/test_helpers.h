@@ -37,6 +37,7 @@ namespace PractRand {
 		double math_pvalue_to_normaldist(double pvalue);
 		double math_normaldist_pdf ( double normal );
 		Uint64 math_nChooseR(int set_size, int num_choices);
+		inline Uint64 math_nCk(long n, long k) { return math_nChooseR(n, k);}
 		double math_factorial(double a);
 		double math_factorial_log(Uint64 a);//log of a!
 		class SampleSet;
@@ -177,20 +178,20 @@ namespace PractRand {
 		};
 
 		class BitMatrix {
-			typedef Uint32 Word;
+			typedef Uint64 Word;
 			std::vector<Word> data;
-			int w, h, ww;
+			long w, h, ww;
 		public:
 			enum { WORD_BITS = sizeof(Word)*8, WORD_BITS_MASK = WORD_BITS-1, WORD_BITS_L2 = WORD_BITS==64?6:(WORD_BITS==32?5:(WORD_BITS==16?4:(WORD_BITS==8?3:-1)))};
-			void init(int w_, int h_);
-			void raw_import(int offset, Word *input, int length);
-			void import_partial_row(int x, int y, Word *input, int bits, int bit_offset, bool zeroed=false);
-			bool read_position(int x, int y) const;
-			void xor_rows(int destination, int source);
-			void xor_rows_skip_start(int destination, int source, int skip);//skip is measured in words?
-			void clear_rectangle(int min_x, int max_x, int min_y, int max_y);
-			int normalize_and_rank();
-			int large_normalize_and_rank();
+			void init(long w_, long h_);
+			void raw_import(long offset, Word *input, long length);
+			void import_partial_row(long x, long y, Word *input, long bits, long bit_offset, bool zeroed=false);
+			bool read_position(long x, long y) const;
+			void xor_rows(long destination, long source);
+			void xor_rows_skip_start(long destination, long source, long skip);//skip is measured in words?
+			void clear_rectangle(long min_x, long max_x, long min_y, long max_y);
+			long normalize_and_rank();
+			long large_normalize_and_rank();
 		};
 
 		struct RawTestCalibrationData_117 {

@@ -199,9 +199,10 @@ namespace PractRand {
 		//otherwise, it will treat it as a soft limit
 		//linear combines only adjacent entries; non-linear is not yet implemented
 		int simplify_prob_table ( unsigned long categories, double N, double *prob_table, Uint64 *counts, bool linear, bool aggressive ) {
+			if (categories <= 2) return categories;
 			if (N < 2.0) N = 2.0;
 			double E = 1.0 / N;
-			int reduced_size = categories;
+			long reduced_size = categories;
 			if (!linear) {
 				std::multimap<double,Uint64> indexed;
 				for (unsigned long i = 0; i < categories; i++) indexed.insert(std::pair<double,Uint64>(prob_table[i], counts[i]));
@@ -225,32 +226,67 @@ namespace PractRand {
 				return reduced_size;
 			}
 			else {//linear
+				//std::list<double> list_form;
+				//std::multimap<double, std::list<double>::iterator> indexed;
+
+				//long num_above_E = 0;
+				//for (int i = 0; i < reduced_size; i++) num_above_E += (prob_table[i] >= E) ? 1 : 0;
+				//if (num_above_E == 1) {//first merge everything down to just 2-3 categories: categories preceding the big one, the big one, and categories following the big one
+
 				// I forget, why I am not doing a single pass?
 				double E2 = aggressive ? 0.5 : E;
-				for (int i = 0; i < 100; i++) {
+				for (int pass = 0; pass < 1; pass++) {
 					int combined = 0;
+					if (reduced_size == 2) continue;
 					for (int j = 0; j < reduced_size; j++) {
+						if (reduced_size - combined <= 2) {
+							prob_table[j - combined] = prob_table[j];
+							counts[j - combined] = counts[j];
+							continue;
+						}
 						double below = 9;
 						double above = 9;
 						if (j > combined) below = prob_table[j-combined-1];
 						if (j < reduced_size-1) above = prob_table[j+1];
 						double other = (below < above) ? below : above;
-						if ((prob_table[j] < E) && (other < E2)) {
+						double current = prob_table[j];
+						//if ((current < E) && (other < E2)) {
+						if ((current < E) && (other >= current) && (other < E2)) {
 							if (below < above) {
-								prob_table[j-combined-1] += prob_table[j];
-								counts[j-combined-1] += counts[j];
+								//prob_table[j-combined-1] += prob_table[j];
+								//counts[j-combined-1] += counts[j];
+								//combined ++;
+								prob_table[j] += prob_table[j - combined - 1];
+								counts[j] += counts[j - combined - 1];
+								//prob_table[j - combined - 1] = 0;//remove
+								//counts[j - combined - 1] = 0;//remove
 								combined ++;
+								j--;
 							}
 							else {
-								prob_table[j-combined] = prob_table[j] + prob_table[j+1];
-								counts[j-combined] = counts[j] + counts[j+1];
-								combined ++;
-								j++;
+								//prob_table[j-combined] = prob_table[j] + prob_table[j+1];
+								//counts[j-combined] = counts[j] + counts[j+1];
+								//combined ++;
+								//j++;
+								prob_table[j + 1] += prob_table[j];
+								counts[j + 1] += counts[j];
+								//prob_table[j] = 0;//remove
+								//counts[j] = 0;//remove
+								combined++;
+							}
+							if (j+1 > combined && prob_table[j - combined] < E) {
+								prob_table[j] = prob_table[j - combined];
+								counts[j] = counts[j - combined];
+								//prob_table[j - combined] = 0;//remove
+								//counts[j - combined] = 0;//remove
+								j--;
 							}
 						}
-						else {
-							prob_table[j-combined] = prob_table[j];
-							counts[j-combined] = counts[j];
+						else if (combined) {
+							prob_table[j - combined] = prob_table[j];
+							counts[j - combined] = counts[j];
+							//prob_table[j] = 0;//remove
+							//counts[j] = 0;//remove
 						}
 					}
 					reduced_size -= combined;
@@ -460,10 +496,18 @@ namespace PractRand {
 			if (num_choices > set_size - num_choices) {
 				num_choices = set_size - num_choices;
 			}
+			if (num_choices == 1) return set_size;
+
 			Uint64 rv = set_size;
-			for (int i = 2; i <= num_choices; i++) {
-				rv *= set_size + 1 - i;
-				rv /= i;//guaranteed to divide evenly, if we haven't overflowed yet
+			for (long i = 2; i <= num_choices; i++) {
+				//rv *= set_size + 1 - i;
+				//rv /= i;//guaranteed to divide evenly, if we haven't overflowed yet
+
+				Uint64 remainder = rv % i;
+				Uint64 multiplier = set_size + 1 - i;
+				rv /= i;
+				rv *= multiplier;
+				rv += (remainder * multiplier) / i;
 			}
 			return rv;
 		}
@@ -712,7 +756,7 @@ namespace PractRand {
 			issue_error();return -1;
 		}
 		double math_chisquared_to_normal ( double chisquared, double DoF ) {
-			return ( chisquared - DoF ) / std::sqrt(DoF);
+			return ( chisquared - DoF ) / std::sqrt(DoF);// THIS SHOULD BE DIVIDED BY SQRT(2) I THINK -- BUT CHANGING IT NOW MIGHT BREAK CALIBRATION ON A LOT OF STUFF
 		}
 		double math_chisquared_to_pvalue ( double chisquared, double DoF ) {
 			if (DoF == 2) return 1 - std::exp(chisquared*-.5);
@@ -1158,17 +1202,17 @@ namespace PractRand {
 			return rs[ii] + (rs[ii+1] - rs[ii]) * fi;
 		}
 
-		void BitMatrix::init(int w_, int h_) {
+		void BitMatrix::init(long w_, long h_) {
 			w = w_;
 			h = h_;
 			ww = (w_ + WORD_BITS_MASK) >> WORD_BITS_L2;
 			data.resize(ww*h, 0);
-			//for (int i = 0; i < ww*h; i++) data[i] = 0;
+			//for (long i = 0; i < ww*h; i++) data[i] = 0;
 		}
-		void BitMatrix::raw_import(int offset, Word *input, int length) {
-			for (int i = 0; i < length; i++) data[offset+i] = input[i];
+		void BitMatrix::raw_import(long offset, Word *input, long length) {
+			for (long i = 0; i < length; i++) data[offset+i] = input[i];
 		}
-		void BitMatrix::import_partial_row(int x, int y, Word *input, int bits, int bit_offset, bool zeroed) {
+		void BitMatrix::import_partial_row(long x, long y, Word *input, long bits, long bit_offset, bool zeroed) {
 			//49 seconds
 			//added zeroed
 			//46 seconds
@@ -1176,7 +1220,7 @@ namespace PractRand {
 			Word *dest = &data[y*ww+(x>>WORD_BITS_L2)];
 			if (false) {
 			/*	//clear partial words at begining & end of region
-				int end = x + bits;
+				long end = x + bits;
 				Word start_mask = (Word(1) << (x & WORD_BITS_MASK)) - 1;
 				Word end_mask = ~(~Word(0) >> (((end-1) & WORD_BITS_MASK) ^ WORD_BITS_MASK));
 				int end_word = end >> WORD_BITS;
@@ -1185,30 +1229,30 @@ namespace PractRand {
 					//dest[0] &= start_mask;
 					//dest[end_word] &= end_mask;
 				}
-				int start_word = x >> WORD_BITS_L2;
-				int end_word = (end-1) >> WORD_BITS_L2;
-				int out_offset = x & WORD_BITS_MASK;
+				long start_word = x >> WORD_BITS_L2;
+				long end_word = (end-1) >> WORD_BITS_L2;
+				long out_offset = x & WORD_BITS_MASK;
 				input -= start_word;
 				if (bit_offset == out_offset) {
 					if (start_word == end_word) data[start_word] |= input[start_word] & ~(start_mask & end_mask);
 					else {
 						data[start_word] |= input[start_word] & ~start_mask;
-						for (int xw = start_word+1; xw < end_word; xw++) {
+						for (long xw = start_word+1; xw < end_word; xw++) {
 							data[xw] = input[xw];
 						}
 						data[end_word] |= input[end_word] & ~end_mask;
 					}
 				}
 				else {
-					int bit_delta = (bit_offset - out_offset) & WORD_BITS_MASK;
-					int iww = 
-					for (int iw = 1; iw < ; xw++) {
+					long bit_delta = (bit_offset - out_offset) & WORD_BITS_MASK;
+					long iww = 
+					for (long iw = 1; iw < ; xw++) {
 					;
 					if (start_word == end_word) {
 					}
 					else {
 						data[start_word] |= (input[xw] >> bit_offset) & ~start_mask;
-						for (int xw = start_word+1; xw < end_word; xw++) {
+						for (long xw = start_word+1; xw < end_word; xw++) {
 							data[xw] = (input[xw] >> bit_delta) | (input[xw+1] << (WORD_BITS-bit_delta));
 						}
 					}
@@ -1217,57 +1261,57 @@ namespace PractRand {
 			//else if (!bit_offset && 
 			else {
 				if (!zeroed) clear_rectangle(x, x+bits, y, y+1);
-				for (int i = 0; i < bits; i++) {
-					int a = i+bit_offset;
+				for (long i = 0; i < bits; i++) {
+					long a = i+bit_offset;
 					bool value = (input[a >> WORD_BITS_L2] >> (a & WORD_BITS_MASK)) & 1;
-					int b = i+(x & WORD_BITS_MASK);
+					long b = i+(x & WORD_BITS_MASK);
 					dest[b >> WORD_BITS_L2] |= Word(value) << (b & WORD_BITS_MASK);
 				}
 			}
 		}
-		bool BitMatrix::read_position(int x, int y) const {
-			int index = (x >> WORD_BITS_L2)+y*ww;
+		bool BitMatrix::read_position(long x, long y) const {
+			long index = (x >> WORD_BITS_L2)+y*ww;
 			Word w = data[index];
 			Word w2 = w >> (x & WORD_BITS_MASK);
 			bool bit = w2 & 1;
 			return bit;
 			//return (data[(x >> WORD_BITS_L2)+y*ww] >> (x & WORD_BITS_MASK)) & 1;
 		}
-		void BitMatrix::xor_rows(int destination, int source) {
-			int base1 = ww * destination;
-			int base2 = ww * source;
-			for (int i = 0; i < ww; i++) data[base1+i] ^= data[base2+i];
+		void BitMatrix::xor_rows(long destination, long source) {
+			long base1 = ww * destination;
+			long base2 = ww * source;
+			for (long i = 0; i < ww; i++) data[base1+i] ^= data[base2+i];
 		}
-		void BitMatrix::xor_rows_skip_start(int destination, int source, int skip) {
-			int base1 = ww * destination;
-			int base2 = ww * source;
-			for (int i = skip; i < ww; i++) data[base1+i] ^= data[base2+i];
+		void BitMatrix::xor_rows_skip_start(long destination, long source, long skip) {
+			long base1 = ww * destination;
+			long base2 = ww * source;
+			for (long i = skip; i < ww; i++) data[base1+i] ^= data[base2+i];
 		}
-		void BitMatrix::clear_rectangle(int min_x, int max_x, int min_y, int max_y) {
-			int start_word = min_x >> WORD_BITS_L2;
-			int end_word = (max_x-1) >> WORD_BITS_L2;
+		void BitMatrix::clear_rectangle(long min_x, long max_x, long min_y, long max_y) {
+			long start_word = min_x >> WORD_BITS_L2;
+			long end_word = (max_x-1) >> WORD_BITS_L2;
 			Word start_mask = (Word(1) << (min_x & WORD_BITS_MASK)) - 1;
 			Word end_mask = ~(~Word(0) >> (((max_x-1) & WORD_BITS_MASK) ^ WORD_BITS_MASK));
 			if (start_word == end_word) {
 				Word mask = start_mask | end_mask;
-				for (int y = min_y; y < max_y; y++) data[y*ww+start_word] &= mask;
+				for (long y = min_y; y < max_y; y++) data[y*ww+start_word] &= mask;
 				return;
 			}
-			for (int y = min_y; y < max_y; y++) data[y*ww+start_word] &= start_mask;
-			for (int x = start_word + 1; x < end_word; x++) {
-				for (int y = min_y; y < max_y; y++) data[y*ww+start_word] = 0;
+			for (long y = min_y; y < max_y; y++) data[y*ww+start_word] &= start_mask;
+			for (long x = start_word + 1; x < end_word; x++) {
+				for (long y = min_y; y < max_y; y++) data[y*ww+start_word] = 0;
 			}
-			for (int y = min_y; y < max_y; y++) data[y*ww+end_word] &= end_mask;
+			for (long y = min_y; y < max_y; y++) data[y*ww+end_word] &= end_mask;
 		}
-		int BitMatrix::normalize_and_rank() {
-			int ranks_found = 0;
-			for (int x = 0; x < w; x++) {
+		long BitMatrix::normalize_and_rank() {
+			long ranks_found = 0;
+			for (long x = 0; x < w; x++) {
 				if (read_position(x, ranks_found)) {//row already in correct position
-					for (int y = ranks_found+1; y < h; y++) if (read_position(x,y)) xor_rows(y, ranks_found);
+					for (long y = ranks_found+1; y < h; y++) if (read_position(x,y)) xor_rows(y, ranks_found);
 					ranks_found++;
 				}
 				else {
-					int y = ranks_found+1;
+					long y = ranks_found+1;
 					while (y < h && !read_position(x, y)) y++;
 					if (y != h) {
 						xor_rows(ranks_found, y);
@@ -1280,29 +1324,29 @@ namespace PractRand {
 			}
 			return ranks_found;
 		}
-		int BitMatrix::large_normalize_and_rank() {
-			int ranks_found = 0;
+		long BitMatrix::large_normalize_and_rank() {
+			long ranks_found = 0;
 
 			//trying to minimize sweeps through memory... but not minimize actual math
 			//(minimizing math costs too much)
 			enum {STEP=24};//rows at once
 			//--: 306, 4: 263, 8: 249, 16: 246, 64: 239, 256: 237
 			//with "shortened" added it's now... 1: 241, 4: 205, 8: 199, 16: 197, 24: 188, 256: 183
-			int last_ranks_found = 0;
-			std::vector<int> rank_x;//tells us the first bit of each deferred rank in the range [last_ranks_found,ranks_found)
-			int virtual_h = STEP;//rows up to (but not including) virtual_h have already been partially normalized up to ranks_found
+			long last_ranks_found = 0;
+			std::vector<long> rank_x;//tells us the first bit of each deferred rank in the range [last_ranks_found,ranks_found)
+			long virtual_h = STEP;//rows up to (but not including) virtual_h have already been partially normalized up to ranks_found
 			if (virtual_h > h) virtual_h = h;
 
 			//Word *base = &data[0];
-			for (int x = 0; x < w; x++) {
-				int shortened = last_ranks_found >> WORD_BITS_L2;
+			for (long x = 0; x < w; x++) {
+				long shortened = last_ranks_found >> WORD_BITS_L2;
 				if (ranks_found >= virtual_h) {//time for a sweep
 					//because too many unused ranks built up
-					for (int y = virtual_h; y < h; y++) {
-						for (int rank = last_ranks_found; rank < ranks_found; rank++) {
-							int x2 = rank_x[rank-last_ranks_found];
+					for (long y = virtual_h; y < h; y++) {
+						for (long rank = last_ranks_found; rank < ranks_found; rank++) {
+							long x2 = rank_x[rank-last_ranks_found];
 							//if (read_position(x2,y)) xor_rows(y, rank);
-							//if (read_position(x2,y)) for (int i = shortened; i < ww; i++) base[y*ww+i] ^= base[rank*ww+i];
+							//if (read_position(x2,y)) for (long i = shortened; i < ww; i++) base[y*ww+i] ^= base[rank*ww+i];
 							if (read_position(x2,y)) xor_rows_skip_start(y, rank, shortened);
 						}
 					}
@@ -1312,19 +1356,19 @@ namespace PractRand {
 					if (virtual_h > h) virtual_h = h;
 				}
 				if (read_position(x, ranks_found)) {//row already in correct position
-					for (int y = ranks_found+1; y < virtual_h; y++) if (read_position(x,y)) xor_rows_skip_start(y, ranks_found, shortened);
+					for (long y = ranks_found+1; y < virtual_h; y++) if (read_position(x,y)) xor_rows_skip_start(y, ranks_found, shortened);
 					rank_x.push_back(x);
 					ranks_found++;
 				}
 				else {
-					int y = ranks_found+1;
+					long y = ranks_found+1;
 					while (y < virtual_h && !read_position(x, y)) y++;
 					if (y == virtual_h) {
 						if (last_ranks_found != ranks_found) {//time for a sweep
 							//because we need to search past the end of the stuff that is usable atm
-							for (int y = virtual_h; y < h; y++) {
-								for (int rank = last_ranks_found; rank < ranks_found; rank++) {
-									int x2 = rank_x[rank-last_ranks_found];
+							for (long y = virtual_h; y < h; y++) {
+								for (long rank = last_ranks_found; rank < ranks_found; rank++) {
+									long x2 = rank_x[rank-last_ranks_found];
 									if (read_position(x2,y)) xor_rows_skip_start(y, rank, shortened);
 								}
 							}
@@ -1336,11 +1380,11 @@ namespace PractRand {
 						while (y < h && !read_position(x, y)) y++;//it's now safe to search past virtual_h, because the buffer is clear
 					}
 					if (y != h) {
-						int rfww = ranks_found * ww;
+						long rfww = ranks_found * ww;
 						xor_rows_skip_start(ranks_found, y, shortened);
-						//for (int i = shortened; i < ww; i++) base[rfww+i] ^= base[y*ww+i];
+						//for (long i = shortened; i < ww; i++) base[rfww+i] ^= base[y*ww+i];
 						xor_rows_skip_start(y, ranks_found, shortened);
-						//for (int i = shortened; i < ww; i++) base[y*ww+i] ^= base[rfww+i];
+						//for (long i = shortened; i < ww; i++) base[y*ww+i] ^= base[rfww+i];
 						for (++y; y < virtual_h; y++) if (read_position(x,y)) xor_rows_skip_start(y, ranks_found, shortened);
 						//for (++y; y < virtual_h; y++) if (read_position(x,y)) for (int i = shortened; i < ww; i++) base[y*ww+i] ^= base[ranks_found*ww+i];
 						rank_x.push_back(x);

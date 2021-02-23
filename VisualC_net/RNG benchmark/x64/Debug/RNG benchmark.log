@@ -1,0 +1,50 @@
+﻿Build started 10/21/2017 10:56:00 AM.
+     1>Project "D:\p\PractRand\VisualC_net\RNG benchmark\RNG benchmark.vcxproj" on node 2 (Rebuild target(s)).
+     1>ClCompile:
+         C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\x86_amd64\CL.exe /c /I../../include /Zi /nologo /W3 /WX- /Od /Oy- /D WIN32 /D _DEBUG /D _CONSOLE /D _UNICODE /D UNICODE /Gm /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Fo"x64\Debug\\" /Fd"x64\Debug\vc120.pdb" /Gd /TP /errorReport:prompt ..\..\tools\RNG_benchmark.cpp
+         RNG_benchmark.cpp
+     1>d:\p\practrand\tools\Candidate_RNGs.h(184): warning C4101: 'old' : unreferenced local variable
+                 d:\p\practrand\tools\Candidate_RNGs.h(183) : while compiling class template member function 'PractRand::Uint64 Candidates::_VeryFast<PractRand::Uint64,29,9,3>::_raw_native(void)'
+                 d:\p\practrand\tools\Candidate_RNGs.h(241) : see reference to function template instantiation 'PractRand::Uint64 Candidates::_VeryFast<PractRand::Uint64,29,9,3>::_raw_native(void)' being compiled
+                 d:\p\practrand\tools\Candidate_RNGs.h(241) : see reference to class template instantiation 'Candidates::_VeryFast<PractRand::Uint64,29,9,3>' being compiled
+     1>d:\p\practrand\tools\Candidate_RNGs.h(436): warning C4244: '=' : conversion from 'PractRand::Uint64' to 'PractRand::Uint8', possible loss of data
+                 d:\p\practrand\tools\Candidate_RNGs.h(432) : while compiling class template member function 'void Candidates::_sfc_alternative<PractRand::Uint8,3,2,1>::_seed(PractRand::Uint64)'
+                 d:\p\practrand\tools\Candidate_RNGs.h(457) : see reference to function template instantiation 'void Candidates::_sfc_alternative<PractRand::Uint8,3,2,1>::_seed(PractRand::Uint64)' being compiled
+                 d:\p\practrand\tools\Candidate_RNGs.h(457) : see reference to class template instantiation 'Candidates::_sfc_alternative<PractRand::Uint8,3,2,1>' being compiled
+     1>d:\p\practrand\tools\Candidate_RNGs.h(437): warning C4244: '=' : conversion from 'PractRand::Uint64' to 'PractRand::Uint8', possible loss of data
+     1>d:\p\practrand\tools\Candidate_RNGs.h(438): warning C4244: '=' : conversion from 'PractRand::Uint64' to 'PractRand::Uint8', possible loss of data
+     1>d:\p\practrand\tools\Candidate_RNGs.h(439): warning C4244: '=' : conversion from 'PractRand::Uint64' to 'PractRand::Uint8', possible loss of data
+     1>d:\p\practrand\tools\Candidate_RNGs.h(436): warning C4244: '=' : conversion from 'PractRand::Uint64' to 'PractRand::Uint16', possible loss of data
+                 d:\p\practrand\tools\Candidate_RNGs.h(432) : while compiling class template member function 'void Candidates::_sfc_alternative<PractRand::Uint16,7,3,2>::_seed(PractRand::Uint64)'
+                 d:\p\practrand\tools\Candidate_RNGs.h(458) : see reference to function template instantiation 'void Candidates::_sfc_alternative<PractRand::Uint16,7,3,2>::_seed(PractRand::Uint64)' being compiled
+                 d:\p\practrand\tools\Candidate_RNGs.h(458) : see reference to class template instantiation 'Candidates::_sfc_alternative<PractRand::Uint16,7,3,2>' being compiled
+     1>d:\p\practrand\tools\Candidate_RNGs.h(437): warning C4244: '=' : conversion from 'PractRand::Uint64' to 'PractRand::Uint16', possible loss of data
+     1>d:\p\practrand\tools\Candidate_RNGs.h(438): warning C4244: '=' : conversion from 'PractRand::Uint64' to 'PractRand::Uint16', possible loss of data
+     1>d:\p\practrand\tools\Candidate_RNGs.h(439): warning C4244: '=' : conversion from 'PractRand::Uint64' to 'PractRand::Uint16', possible loss of data
+     1>d:\p\practrand\tools\Candidate_RNGs.h(436): warning C4244: '=' : conversion from 'PractRand::Uint64' to 'PractRand::Uint32', possible loss of data
+                 d:\p\practrand\tools\Candidate_RNGs.h(432) : while compiling class template member function 'void Candidates::_sfc_alternative<PractRand::Uint32,25,8,3>::_seed(PractRand::Uint64)'
+                 d:\p\practrand\tools\Candidate_RNGs.h(459) : see reference to function template instantiation 'void Candidates::_sfc_alternative<PractRand::Uint32,25,8,3>::_seed(PractRand::Uint64)' being compiled
+                 d:\p\practrand\tools\Candidate_RNGs.h(459) : see reference to class template instantiation 'Candidates::_sfc_alternative<PractRand::Uint32,25,8,3>' being compiled
+     1>d:\p\practrand\tools\Candidate_RNGs.h(437): warning C4244: '=' : conversion from 'PractRand::Uint64' to 'PractRand::Uint32', possible loss of data
+     1>d:\p\practrand\tools\Candidate_RNGs.h(438): warning C4244: '=' : conversion from 'PractRand::Uint64' to 'PractRand::Uint32', possible loss of data
+     1>d:\p\practrand\tools\Candidate_RNGs.h(439): warning C4244: '=' : conversion from 'PractRand::Uint64' to 'PractRand::Uint32', possible loss of data
+     1>d:\p\practrand\tools\Candidate_RNGs.h(512): warning C4146: unary minus operator applied to unsigned type, result still unsigned
+                 d:\p\practrand\tools\Candidate_RNGs.h(512) : while compiling class template member function 'PractRand::Uint32 Candidates::_mcx<PractRand::Uint32,13,0x6595a395a1ec531b>::lfsr(Word,Word)'
+                 with
+                 [
+                     Word=PractRand::Uint32
+                 ]
+                 d:\p\practrand\tools\Candidate_RNGs.h(525) : see reference to function template instantiation 'PractRand::Uint32 Candidates::_mcx<PractRand::Uint32,13,0x6595a395a1ec531b>::lfsr(Word,Word)' being compiled
+                 with
+                 [
+                     Word=PractRand::Uint32
+                 ]
+                 d:\p\practrand\tools\Candidate_RNGs.h(632) : see reference to class template instantiation 'Candidates::_mcx<PractRand::Uint32,13,0x6595a395a1ec531b>' being compiled
+       Link:
+         C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\x86_amd64\link.exe /ERRORREPORT:PROMPT /OUT:"D:\p\PractRand\VisualC_net\x64\Debug\RNG benchmark.exe" /INCREMENTAL /NOLOGO ../x64/Debug/PractRand_Full.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"D:\p\PractRand\VisualC_net\x64\Debug\RNG benchmark.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"D:\p\PractRand\VisualC_net\x64\Debug\RNG benchmark.lib" x64\Debug\RNG_benchmark.obj
+         RNG benchmark.vcxproj -> D:\p\PractRand\VisualC_net\x64\Debug\RNG benchmark.exe
+     1>Done Building Project "D:\p\PractRand\VisualC_net\RNG benchmark\RNG benchmark.vcxproj" (Rebuild target(s)).
+
+Build succeeded.
+
+Time Elapsed 00:00:01.57

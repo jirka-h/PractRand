@@ -44,37 +44,37 @@ PractRand std 512 MB     0       14      5       7       11     6
 TestU01 SmallCrush       0       8       3       7       2      0
 RaBiGeTe ext 2 Mb        0       6       4       7       2      0
 gjrand mcp --small       0       14      7       8       15     8
-Dieharder (custom 10sec) 0       4       3       1       2      0
+Dieharder (custom 10sec) 0       4       4       1       2      0
 -- (1 minute)                                                   
 PractRand std 4 GB       0       21      5       13      15     11
 RaBiGeTe ext 16 Mb       0       7       4       11      4      0
 gjrand mcp --standard    0       18      10      12      16     11
-Dieharder (custom 1min)  0       6       4       2       2      0
+Dieharder (custom 1min)  0       6       5       2       2      0
 -- (5 minutes)                                                  
 PractRand std 16 GB      0       27      6       14      20     16
 RaBiGeTe ext 64 Mb       0       9       4       14      4      0
 gjrand mcp --big         0       24      11      15      22     18
-Dieharder (custom 5min)  0       8       4       2       8      5
+Dieharder (custom 5min)  0       8       6       2       8      5
 -- (30 minutes)                                                 
 PractRand std 128 GB     0       35      9       19      21     20
 TestU01 Crush            1       22      8       16      6      5
 RaBiGeTe ext 256 Mb      0       9       5       19      6      1
 -- (1 hour)                                                     
-PractRand std 256 GB     1       35      10      20      22     24
-RaBiGeTe ext 512 Mb      0       9       5       21      8      2
-gjrand mcp --huge        1       32      11      16      23     19
+PractRand std 256 GB     1       35      15      20      22     24
+RaBiGeTe ext 512 Mb      0       9       8       21      8      2
+gjrand mcp --huge        1       32      15      16      23     19
 Dieharder -a             0       7       2       4       2      2
 -- (4 hours)                                                    
-PractRand std 1 TB       1       38      14      24      24     29
-TestU01 BigCrush         1       24      10      18      8      7
+PractRand std 1 TB       1       38      19      24      24     29
+TestU01 BigCrush         1       24      13      18      8      7
 -- (8 hours)                                                    
-PractRand std 2 TB       1       40      15      24+     25     31
-gjrand mcp --tera        1       36      11      22      27     27
+PractRand std 2 TB       1       40      20      24+     25     31
+gjrand mcp --tera        1       36      16      22      27     27
 -- (1 day)                              
-PractRand std 4 TB       1       42      15      24+     26     34
+PractRand std 4 TB       1       42      20      24+     26     34
 -- (4 days)                              
-PractRand std 16 TB      1       46      16      24+     26     34
-gjrand mcp --ten-tera    1       39      13      23      27     31+
+PractRand std 16 TB      1       46      22      24+     26     34
+gjrand mcp --ten-tera    1       39      19      23      27     31+
 
 test suites vs features
 name                       PractRand    TestU01    RaBiGeTe   gjrand   NIST STS   Dieharder
@@ -100,8 +100,9 @@ PractRand std:
 
 TestU01 *Crush:
 	Meaning SmallCrush, Crush, and BigCrush from TestU01.  
-	The only test suite with a big name academic in the field behind it.  
+	The only test suite with a real academics in the field behind it.  
 	The only test to guarantee (on default settings anyway) that all subtest results are 100% independant.  
+		Although I think that only applies to subtest results with distinct numbers.
 	caveats:
 		Does not support multithreading.  
 		More sensitive to RNG speed than the other test suites (of those listed) at default settings.  
@@ -216,6 +217,22 @@ gjrand mcp / pmcp
 	biggest complaint is that it silently fails, producing garbage results, 
 	if multiple instances of the test suite are run simultaneously.  
 
+	From its output, I'm currently counting "grade 10 failures" and up as 
+	failure, and grade 4 to grade 9 failures as suspicious.  I run gjrand 
+	mcp or pmcp once for each test length from --small to --tera, in 
+	order, and if there are no failures or suspicious results I put a - 
+	in the gjrand results column (from left to right, matching the 
+	test length).  If there are no failures, but there are suspicious 
+	results, then I put a ~ in the results column.  If there are 
+	failures, I count them and put the number in the results column (in 
+	hexadecimal, so that I can record numbers beyond 9 without throwing 
+	off the formating).  Thus a gjrand result listed as ---~3 means that 
+	mcp or pmcp reported nothing suspicious at --small, --standard, 
+	or --big, zero failing results but one or more suspicious results at 
+	--huge, and three failing results at --tera.  If there were no 
+	failures at --tera, and I have spare CPU time, I then run it at 
+	--ten-tera to add a final result.  
+
 
 
 *****************************************************************************
@@ -244,46 +261,47 @@ recommended RNGs
 	sfc64           3         > 1 TB      pass?      pass?      -----       -
 	sfc32           3         > 1 TB      pass       pass       ------      -
 	sfc16           2         512 TB      pass       pass       ------      -
-	mt19937         2         256 GB      0/2/2      pass       ---11       -
+	rarns16         3         ?
+	mt19937         2         256 GB      0/2/2      pass       ---111      -
 (usually "pass?" means that a lower quality variant passed so I didn't fully test the higher quality variant)
 
 other RNGs - simple (49)
 	RNG               Quality     PractRand   TestU01     RaBiGeTe    gjrand      others
 	                  subscores   standard    *Crush      Extended*1  mcp
-	xorshift32        0/0/0/0     64 KB       5/53/?      64 Kb       579CC       DHA0, STS
-	xorshift64        0/4/2/0     64 KB       1/25/?      128 Kb      55556       DHA0, STS
+*	xorshift32        0/0/0/0     64 KB       5/53/?      64 Kb       579CC       DHA0, STS
+*	xorshift64        0/4/2/0     64 KB       1/25/?      128 Kb      55556       DHA0, STS
 	xorshift32of128   0/5/3/1     512 KB      0/6/?       1 Mb        11111       -
 	xoroshiro128plus  0/5/3/1     32 MB       pass        pass        --111       -
-	xorwow32of96      0/5/3/1     2 MB        0/3/5       64 Mb       11344       -
+*	xorwow32of96      0/5/3/1     2 MB        0/3/5       64 Mb       11344       -
 	xorwow32x6        1/5/4/1     16 MB       0/1/2       pass        -1112       -
 	xsalta16x3        2/1/1/1     1 MB        0/1/3       pass        11111       -
 	xsaltb16x3        2/1/1/1     2 GB        pass        pass        --135       -
-	xsaltc16x3        1/1/1/1     2 GB        0/1/1       pass        --124       -
-	sapparot          0/2/2/1     16 MB       0/0/1       64 Mb       22345       -
-	sap16of48         1/1/1/1     512 KB      0/3/2       1 Mb        11124       -
+*	xsaltc16x3        1/1/1/1     2 GB        0/1/1       pass        --124       -
+*	sapparot          0/2/2/1     16 MB       0/0/1       64 Mb       22345       -
+*	sap16of48         1/1/1/1     512 KB      0/3/2       1 Mb        11124       -
 	sap32of96         4/3/3/1     2 MB        pass        4 Mb        11112       -
-	flea32x1          0/4/3/2     64 KB       pass        pass        22245       -
+*	flea32x1          0/4/3/2     1 MB        pass        pass        22245       -
 	jsf16             4/2/2/2     16 TB       pass        pass        ------      -
-	sfc_v1_16         1/1/1/1     8 GB        1/7/?       pass        -1124       DHA1, STS
-	sfc_v1_32         1/3/2/1     8 TB        0/2/7       pass        ---12       -
-	sfc_v2_16         0/1/1/1     2 GB        0/1/0       pass        ---23       DH2
-	sfc_v2_32         2/3/3/2     4 TB        0/0/1       pass        ----1       -
+*	sfc_v1_16         1/1/1/1     8 GB        1/7/?       pass        -1124       DHA1, STS
+*	sfc_v1_32         1/3/2/1     8 TB        0/2/7       pass        ---12       -
+*	sfc_v2_16         0/1/1/1     2 GB        0/1/0       pass        ---23       DH2
+.	sfc_v2_32         2/3/3/2     4 TB        0/0/1       pass        ----1       -
 	sfc_v3_16         2/1/1/1     512 GB      pass        pass        -----~      -
 	sfc_v3_32         5/3/3/2     > 16 TB     pass        pass        ------      -
-	simpleA           1/3/3/1     2 GB        pass        pass        12334       DH2
-	simpleB           0/1/1/0     128 MB      1/6/2       pass        ---33       DH1
+*	simpleA           1/3/3/1     2 GB        pass        pass        12334       DH2
+*	simpleB           0/1/1/0     128 MB      1/6/2       pass        ---33       DH1
 	simpleC           0/1/1/1     16 GB       1/6/2       pass        ---~1       -
-	simpleD           2/3/3/2     128 GB      pass        pass        -1233       -
-	simpleE           3/3/3/2     1 TB        pass        pass        -~113       -
-	simpleF           2/2/2/1     16 GB       pass        pass        ---12       -
-	simpleG           1/3/3/2     128 GB      0/18/?      pass        --255       DHA
+*	simpleD           2/3/3/2     128 GB      pass        pass        -1233       -
+*	simpleE           3/3/3/2     1 TB        pass        pass        -~113       -
+*	simpleF           2/2/2/1     16 GB       pass        pass        ---12       -
+*	simpleG           1/3/3/2     128 GB      0/18/?      pass        --255       DHA
 	trivium_weakenedA 4/4/3/3     > 16 TB     pass        pass        ------      -
 	trivium_weakenedB 3/3/3/3     1 TB        pass        pass        ----4       -
-	mo_Lesr32         0/0/0/0     64 KB       7/?/?       256 Kb      888AD       DHA0, STS1
-	mo_ResrRers32     4/2/2/2     2 TB        pass        pass        ----~1      -
-	mo_Rers32of64     0/2/2/0     8 MB        0/10/?      16 Kb       44455       DHA0
-	mo_Resdra32of64   1/2/2/1     4 GB        0/2/6       pass        -~-5C       -
-	murmlacish        3/3/3/2     4 TB        0/1/0       pass        ----2       -
+*	mo_Lesr32         0/0/0/0     64 KB       7/?/?       256 Kb      888AD       DHA0, STS1
+*	mo_ResrRers32     4/2/2/2     2 TB        pass        pass        ----~1      -
+*	mo_Rers32of64     0/2/2/0     8 MB        0/10/?      16 Kb       44455       DHA0
+*	mo_Resdra32of64   1/2/2/1     4 GB        0/2/6       pass        -~-5C       -
+*	murmlacish        3/3/3/2     4 TB        0/1/0       pass        ----2       -
 	gjishA            ?/?/?/?     32 GB       pass        pass        ---12       -
 	gjishB            ?/?/?/?     > 16 TB     pass        pass        ------      -
 	gjishC            ?/?/?/?     64 GB       0/1/4       pass        --~11       DHA
@@ -299,7 +317,6 @@ other RNGs - simple (49)
 	alearx16          4/1/1/3     16 TB       pass        pass        ------      -
 	arac16            1/2/2/2     8 GB        0/1/1       pass        ------      -
 	arxc16            5/2/2/3     > 16 TB     pass        pass        ------      -
-	rarns16           4/1/1/2     16 TB       pass        pass        -----~      -
 	*** 10 sec                    14 (512 MB) 8 (SC)      6 (2 Mb)    14 (small)
 	*** 1 minute                  21 (4 GB)   --          7 (16 Mb)   18 (standard)
 	*** 5 minutes                 27 (16 GB)  --          9 (64 Mb)   24 (big)
@@ -308,7 +325,7 @@ other RNGs - simple (49)
 	*** 4 hours                   38 (1 TB)   24 (BC)     --          --
 	*** 8 hours                   40 (2 TB)   --          --          36 (tera)
 	*** 1 day                     42 (4 TB)   --          --          --
-	*** 4 days                    46 (16 TB)  --          --          39 (ten-tera)
+	*** 4 days                    45 (16 TB)  --          --          39 (ten-tera)
 
 other RNGs - non-LCG multiplication based
 	RNG             Quality     PractRand   TestU01     RaBiGeTe    gjrand      others
@@ -320,6 +337,12 @@ other RNGs - non-LCG multiplication based
 	rxmult16        0/2/2/1     128 GB      ~pass       pass        ------      -
 	multish3x32     1/3/3/2     16 GB       0/0/1       pass        11111       -
 	multish4x16     1/2/2/1     512 KB      0/2/1       1 Mb        11111       -
+	mwrca16         0/0/0/0     16 MB       1/4/10      128 Mb      ~23AC       DH2
+	mwrca32         4/2/2/1     8 TB        pass        pass        -----1      -
+	mwrcc16         0/1/1/1     128 MB      0/2/7       32 Mb       12447       DH0
+	mwrcc32         2/3/3/2     64 GB       0/0/1       16 Mb       13345       -
+	mwrcca16        0/1/1/1     512 MB      pass        pass        ---~4       -
+	mwrcca32        4/3/3/2     > 32 TB     pass        pass        -----1      -
 	old_mwlac16     2/2/2/2     256 GB      pass        pass        ------      -
 	mwlac_varA      ?/1/1/?     32 GB       0/1/1       pass        -111~4      -
 	mwlac_varB      ?/1/1/?     1 TB        0/2/2       pass        -----4      -
@@ -332,15 +355,15 @@ other RNGs - non-LCG multiplication based
 	mulcr32         ?/3/3/?     > 32 TB     pass        ~pass       ------      -
 	mmr16           ?/1/1/1     32 GB       0/1/1       pass        -----3      -
 	mmr32           ?/3/3/3     > 16 TB     pass        pass        11111       -
-	*** 10 sec                  5 (512 MB)  3 (SC)      4 (2 Mb)    8 (small)
-	*** 1 minute                5 (4 GB)    --          4 (16 Mb)   11 (standard)
-	*** 5 minutes               6 (16 GB)   --          4 (64 Mb)   12 (big)
-	*** 30 minutes              10 (128 GB) 8 (C)       5 (256 Mb)  --
-	*** 1 hour                  11 (256 GB) --          5 (512 Mb)  ~12 (huge)
-	*** 4 hours                 15 (1 TB)   10 (BC)      --          --
-	*** 8 hours                 16 (2 TB)   --          --          ~12 (tera)
-	*** 1 day                   16 (4 TB)   --          --          --
-	*** 4 days                  17 (16 TB)  --          --          15 (ten-tera)
+	*** 10 sec                  8 (512 MB)  4 (SC)      4 (2 Mb)    10 (small)
+	*** 1 minute                8 (4 GB)    --          5 (16 Mb)   14 (standard)
+	*** 5 minutes               9 (16 GB)   --          6 (64 Mb)   15 (big)
+	*** 30 minutes              14 (128 GB) 10 (C)      8 (256 Mb)  --
+	*** 1 hour                  15 (256 GB) --          8 (512 Mb)  ~15 (huge)
+	*** 4 hours                 19 (1 TB)   13 (BC)     --          --
+	*** 8 hours                 20 (2 TB)   --          --          ~16 (tera)
+	*** 1 day                   20 (4 TB)   --          --          --
+	*** 4 days                  22 (16 TB)  --          --          21 (ten-tera)
 
 other RNGs - LCG-based RNGs
 	RNG               Quality     PractRand   TestU01     RaBiGeTe    gjrand      others
@@ -373,12 +396,12 @@ other RNGs - LCG-based RNGs
 	bblcg(32,160,32)  ?/5/3/0     1 MB        0/21/??     2 Mb        44555       DHA
 	bblcg(32,192,32)  ?/5/4/1     2 GB        0/11/??     4 Mb        -1144       DHA
 	bblcg(32,224,32)  ?/5/4/1     1 TB        0/2/5       64 Mb       ------      -
-	bblcg(32,256,32)  ?/5/5/2     > 1 TB      0/0/1       ~pass       -----_      -
-	bblcg(32,288,32)  ?/5/5/2     > 16 TB?    pass        pass        -----_      -
+?	bblcg(32,256,32)  ?/5/5/2     > 1 TB      0/0/1       ~pass       -----_      -
+?	bblcg(32,288,32)  ?/5/5/2     > 16 TB?    pass        pass        -----_      -
 	pcg32_norot       1/4/2/2     2 GB        0/1/2       8 Mb        ----1       -
-	pcg32             5/4/2/3     > 4 TB      pass        pass        ------      -
-	cmrg32of192       5/5/4/3     > 1 TB      pass        pass        ------      -
-	xsh_lcg_bad       4/5/5/2     > 1 TB      pass        32 Mb       ------      -
+?	pcg32             5/4/2/3     > 4 TB      pass        pass        ------      -
+?	cmrg32of192       5/5/4/3     > 1 TB      pass        pass        ------      -
+?	xsh_lcg_bad       4/5/5/2     > 1 TB      pass        32 Mb       ------      -
 	*** 10 sec                    7 (512 MB)  7 (SC)      7 (2 Mb)    8 (small)
 	*** 1 minute                  13 (4 GB)   --          12 (16 Mb)  12 (standard)
 	*** 5 minutes                 14 (16 GB)  --          16 (64 Mb)  15 (big)
@@ -415,10 +438,12 @@ other RNGs - cyclic buffer based (or other static structures)
 	dual_cbuf_accum   0/5/5/2     128 MB      pass?       pass        --1112      -
 	fibmul16of32      1/5/5/1     16 GB       pass        pass        --124       -
 	fibmul32of64      3/5/5/2     512 GB      pass        pass        ----1       -
+	fibmulmix16       ?/5/5/2     2 GB        pass        pass        11345       -
+	fibmulmix32       ?/5/5/3     64 GB       pass?       pass?       1111        -
 	ranrot32small     ?/5/5/2     256 MB      0/1/0       256 Mb      44445       DHA0
 	ranrot32          2/5/5/2     2 GB        pass        pass        12222       -
 	ranrot32big       3/5/5/2     16 GB       pass?       pass?       ----2       -
-	ranrot3tap32small ?/5/5/2     512 MB      pass        pass        22444        -
+	ranrot3tap32small ?/5/5/2     512 MB      pass        pass        22444       -
 	ranrot3tap32      3/5/5/3     256 GB      pass        pass        --222       -
 	ranrot3tap32big   4/5/5/3     4 TB        pass?       pass?       --~-2       -
 	ranrot32hetsmall  4/5/5/3     8 GB        pass        pass        11234       -
@@ -429,15 +454,15 @@ other RNGs - cyclic buffer based (or other static structures)
 	chacha(3 rounds)  0/5/5/1     32 MB       0/6/28      2 Mb        36999       DH2, STS
 	salsa(4 rounds)   1/5/5/2     16 GB       ~pass       256 Mb      11257       DH2
 	chacha(4 rounds)  5/5/5/3     > 16 TB     pass        pass        ------      -
-	*** 10 sec                    11 (512 MB) 2 (SC)      2 (2 Mb)    15 (small)
-	*** 1 minute                  15 (4 GB)   --          4 (16 Mb)   16 (standard)
-	*** 5 minutes                 20 (16 GB)  --          4 (64 MB)   22 (big)
-	*** 30 minutes                21 (128 GB) 6 (C)       6 (256 Mb)  --
-	*** 1 hour                    22 (256 GB) --          6 (512 Mb)  23 (huge)
-	*** 4 hours                   24 (1 TB)   8 (BC)      --          --
-	*** 8 hours                   25 (2 TB)   --          --          27 (tera)
-	*** 1 day                     26 (4 TB)   --          --          --
-	*** 4 days                    26 (16 TB)  --          --          27 (ten-tera)
+	*** 10 sec                    11 (512 MB) 2 (SC)      2 (2 Mb)    17 (small)
+	*** 1 minute                  16 (4 GB)   --          4 (16 Mb)   18 (standard)
+	*** 5 minutes                 21 (16 GB)  --          4 (64 MB)   24 (big)
+	*** 30 minutes                23 (128 GB) 6 (C)       6 (256 Mb)  --
+	*** 1 hour                    24 (256 GB) --          6 (512 Mb)  25 (huge)
+	*** 4 hours                   26 (1 TB)   8 (BC)      --          --
+	*** 8 hours                   27 (2 TB)   --          --          29 (tera)
+	*** 1 day                     28 (4 TB)   --          --          --
+	*** 4 days                    28 (16 TB)  --          --          29 (ten-tera)
 
 other RNGs - indirection based
 	RNG             Quality     PractRand   TestU01    RaBiGeTe    gjrand      others

@@ -2,7 +2,8 @@
 #include <cstdlib>
 #include <cmath>
 #include <ctime>
-#include <string>
+//#include <string>
+#include <cstring>
 #include <sstream>
 //#include <map>
 //#include <vector>
@@ -201,9 +202,30 @@ void benchmark_entropy_pool_input() {
 	POLYPERF(sha2_based)
 }
 
+const char *get_exec_name(const char *argv0) {
+	const char *p = std::strpbrk(argv0, "/\\");
+	if (p) return get_exec_name(p + 1);
+	else return argv0;
+}
+
 int main(int argc, char **argv) {
 	PractRand::initialize_PractRand();
 //	PractRand::self_test_PractRand();
+
+	if (argc > 1) {
+		const char *name = get_exec_name(argv[0]);
+		if (!std::strcmp(argv[1], "-version") || !std::strcmp(argv[1], "--version") || !std::strcmp(argv[1], "-v")) {
+			std::printf("%s version %s\n", name, PractRand::version_str);
+			// arbitrarily declaring the version number of RNG_benchmark to match the version number of PractRand
+			std::printf("Benchmarks all current recommended PRNGs in PractRand.\n");
+			//           12345678901234567890123456789012345678901234567890123456789012345678901234567890
+			std::exit(0);
+		}
+		std::printf("usage: %s    (benchmarks all recommended PRNGs)\n", name);
+		std::printf("or: %s --help    (displays this message)\n", name);
+		std::printf("or: %s --version    (displays version information)\n", name);
+		std::exit(0);
+	}
 
 	printf("Random number generation speeds:\n");
 	benchmark_RNG_speeds();

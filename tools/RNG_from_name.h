@@ -68,7 +68,7 @@ namespace PractRand {
 		namespace RNG_Sets {
 			const char *recommended_rngs[] = {
 				"hc256", "trivium",
-				"efiix64x384", "efiix32x384", "efiix16x384", "efiix8x384",
+				"efiix64x48", "efiix32x48", "efiix16x48", "efiix8x48",
 				"isaac64x256", "isaac32x256",
 				"chacha(8)", "salsa(8)",
 				"arbee",
@@ -602,6 +602,7 @@ namespace RNG_Factories {
 		REGISTER_RNG_0(fibmul16of32)
 		REGISTER_RNG_0(fibmul32of64)
 		REGISTER_RNG_0(fibmulmix16)
+		REGISTER_RNG_0(fibmulmix32)
 		REGISTER_RNG_0(ranrot32small)
 		REGISTER_RNG_0(ranrot32)
 		REGISTER_RNG_0(ranrot32big)

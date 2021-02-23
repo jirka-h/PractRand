@@ -25,6 +25,7 @@ namespace PractRand {
 		if (error_callback) error_callback(msg);
 		else {
 			if (msg) std::fprintf(stderr, "%s\n", msg);
+			std::fprintf(stderr, "an error occurred, aborting\n");
 			std::exit(1);
 		}
 	}
@@ -266,19 +267,25 @@ namespace PractRand {
 			virtual Uint32 get_properties() const {return FLAG_CLUMSY | FLAG_SEEDER;}
 		};
 	}
-	Uint32 randi_fast_implementation(Uint32 random_value, Uint32 max) {
-		return Uint32((Uint64(max) * random_value) >> 32);
-	}
-	StateWalkingObject *int_to_rng_seed(Uint64 i) {
-		return new GenericIntegerSeedingStateWalker(i);
-	}
-	StateWalkingObject *vrng_to_rng_seeder(RNGs::vRNG *rng) {
-		return new GenericSeedingStateWalker(rng);
-	}
-	StateWalkingObject *get_autoseeder(const void *target) {
-		return new AutoSeeder::AutoSeedingStateWalker(target);
-	}
 	namespace Internals {
+		Uint32 randi_fast_implementation(Uint32 random_value, Uint32 max) {
+			return Uint32((Uint64(max) * random_value) >> 32);
+		}
+		StateWalkingObject *int_to_rng_seed(Uint64 i) {
+			return new GenericIntegerSeedingStateWalker(i);
+		}
+		StateWalkingObject *vrng_to_rng_seeder(RNGs::vRNG *rng) {
+			return new GenericSeedingStateWalker(rng);
+		}
+		StateWalkingObject *get_autoseeder(const void *target) {
+			return new AutoSeeder::AutoSeedingStateWalker(target);
+		}
+		float randf_implementation(Uint32 raw) {
+			return  float((raw & ((PractRand::Uint32(1) << 24) - 1)) *  float(1.0 / 16777216.0));
+		}
+		double randlf_implementation(Uint64 raw) {
+			return double((raw & ((PractRand::Uint64(1) << 53) - 1)) * double(1.0 / 9007199254740992.0));
+		}
 		void test_random_access(PractRand::RNGs::vRNG *rng, PractRand::RNGs::vRNG *known_good, Uint64 period_low64, Uint64 period_high64) {
 			Uint64 seed = known_good->raw64();
 			Uint8 a1, a2, a3, b1, b2, b3;
@@ -401,10 +408,10 @@ namespace PractRand {
 			PRACTRAND__RANDLI_IMPLEMENTATION(max)
 		}
 		Uint32 vRNG::randi_fast(Uint32 max) {
-			return randi_fast_implementation(raw32(), max);
+			return Internals::randi_fast_implementation(raw32(), max);
 		}
-		float vRNG::randf() {PRACTRAND__RANDF_IMPLEMENTATION(*this)}
-		double vRNG::randlf() {PRACTRAND__RANDLF_IMPLEMENTATION(*this)}
+		float vRNG::randf() { return Internals::randf_implementation(raw32()); }
+		double vRNG::randlf() { return Internals::randlf_implementation(raw64()); }
 		double vRNG::gaussian() { return Internals::generate_gaussian_fast(raw64()); }
 		Uint64 vRNG::get_flags() const {return 0;}
 		void vRNG::seek_forward128 (Uint64, Uint64) {}
@@ -474,6 +481,7 @@ namespace PractRand {
 		}
 	}
 	void self_test_PractRand() {
+		//for these algorithms, I test against published test-vectors
 		RNGs::Raw::mt19937::self_test();
 		RNGs::Raw::hc256::self_test();
 		RNGs::Raw::isaac32x256::self_test();
@@ -481,12 +489,25 @@ namespace PractRand {
 		RNGs::Raw::chacha::self_test();
 		RNGs::Raw::salsa::self_test();
 
+		//for these algorithms, I can't find any published test vectors, so I test against my own output
+		RNGs::Raw::jsf32::self_test();
+		RNGs::Raw::jsf64::self_test();
+
+		//for these algorithms, I don't yet have any tests at all:
+		//RNGs::Raw::isaac64x256::self_test();
+		//RNGs::Raw::sfc16::self_test();
+		//RNGs::Raw::sfc32::self_test();
+		//RNGs::Raw::sfc64::self_test();
+
 		RNGs::Polymorphic::hc256 known_good(PractRand::SEED_AUTO);
 
 		{RNGs::Polymorphic::chacha rng(PractRand::SEED_NONE); PractRand::Internals::test_random_access(&rng, &known_good, 0, 1ull << 36); }
 		{RNGs::Polymorphic::salsa rng(PractRand::SEED_NONE); PractRand::Internals::test_random_access(&rng, &known_good, 0, 1ull << 36); }
 		{RNGs::Polymorphic::xsm32 rng(PractRand::SEED_NONE); PractRand::Internals::test_random_access(&rng, &known_good, 0, 1); }
 		{RNGs::Polymorphic::xsm64 rng(PractRand::SEED_NONE); PractRand::Internals::test_random_access(&rng, &known_good, 0, 0); }
+		//{RNGs::Polymorphic::rarns16 rng(PractRand::SEED_NONE); PractRand::Internals::test_random_access(&rng, &known_good, (1ull << 48) - 1, 0); }
+		//{RNGs::Polymorphic::rarns32 rng(PractRand::SEED_NONE); PractRand::Internals::test_random_access(&rng, &known_good, 0xFfFfFfFfFfFfFfFfull, (1ull << 32) - 1); }
+		//{RNGs::Polymorphic::rarns64 rng(PractRand::SEED_NONE); PractRand::Internals::test_random_access(&rng, &known_good); }
 	}
 	bool initialize_PractRand() {
 		if (!AutoSeeder::initialized) 

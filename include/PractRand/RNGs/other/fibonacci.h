@@ -285,7 +285,7 @@ namespace PractRand {
 				};
 				class fibmul32of64 : public vRNG32 {// 35 @ 3/2, 39 @ 7/5
 					enum {LAG1 = 7, LAG2 = 5};
-					Uint16 buffer[LAG1]; // LAG1 > LAG2 > 0
+					Uint64 buffer[LAG1]; // LAG1 > LAG2 > 0
 					Uint8 position;
 				public:
 					Uint32 raw32();
@@ -294,10 +294,19 @@ namespace PractRand {
 				};
 				class fibmulmix16 : public vRNG16 {
 					enum { LAG1 = 7, LAG2 = 3 };
-					Uint32 buffer[LAG1]; // LAG1 > LAG2 > 0
+					Uint16 buffer[LAG1]; // LAG1 > LAG2 > 0
 					Uint8 position;
 				public:
 					Uint16 raw16();
+					std::string get_name() const;
+					void walk_state(StateWalkingObject *);
+				};
+				class fibmulmix32 : public vRNG32 {
+					enum { LAG1 = 7, LAG2 = 3 };
+					Uint32 buffer[LAG1]; // LAG1 > LAG2 > 0
+					Uint8 position;
+				public:
+					Uint32 raw32();
 					std::string get_name() const;
 					void walk_state(StateWalkingObject *);
 				};

@@ -30,15 +30,6 @@ Recommended tests:
 		weights.  
 	Gap16 - A variation on the classic "Gap" test.  No parameters 
 		are needed.  
-	BRank - A fairly standard binary matrix rank test.  The most 
-		original part of it is the control logic that decides 
-		when data should be taken from the RNG output stream to 
-		make a matrix and what size matrix it should be.  The 
-		parameter is a log-scale amount of time per gigabyte it 
-		spends calculating matrix ranks.  
-		Due to the coarse-grained nature of the results it 
-		produces, precise p-values are impossible for many of 
-		its subtests.  
 	FPF - "floating point frequency" test; contrary to the name 
 		it's purely integer math.  Can be slow on some settings.  
 		This checks for very short range correlations, even shorter 
@@ -48,12 +39,40 @@ Recommended tests:
 		the binary format of floating point numbers storing the 
 		integer values of overlapping windows of the original data 
 		stream.  
+	BRank - A fairly standard binary matrix rank test.  The most 
+		original part of it is the control logic that decides 
+		when data should be taken from the RNG output stream to 
+		make a matrix and what size matrix it should be.  The 
+		parameter is a log-scale amount of time per gigabyte it 
+		spends calculating matrix ranks.  
+		Due to the coarse-grained nature of the results it 
+		produces, precise p-values are impossible for many of 
+		its subtests.  
+	mod3n - Based upon the mod3 test in gjrand, this looks for 
+		short range patterns in the value modulo 3 of the RNG 
+		output.  This examines the RNG output as a sequence of 
+		8 bit values, 16 bit values, 32 bit values, 64 bit 
+		values, 128 bit values, 256 bit values, etc, similar 
+		BCFN in that regard.  This does not test all of the 
+		output stream, only small chunks of it here an there, 
+		similar to BRank in that regard.  While this mostly 
+		catches the same sorts of biases as DC6 and BCFN, 
+		those two operate on hamming weights while this one 
+		does not, so once in a while a pattern that leaves 
+		hamming weight distributions untouched slips by those 
+		but gets caught easily by this one.  
+	TMFn - A simple test looking for some simple long to very 
+		long range correlations common in LCG output.  This 
+		only looks at a tiny fraction of the data stream, 
+		so it takes very little CPU time.  The test results 
+		from this aren't calibrated yet.  
 Transforms:
 	(these appear as tests but are simply wrappers for other tests)
-	multiplex - simply routes operations on this test to multiple 
-		subtests
-	lowbits - for each 1,2,4,or 8 bytes this takes the lowest 1,2,4,8,16, 
-		or 32 bits and routes them to the wrapped tests)
+	multiplex - simply routes operations on this test to one or 
+		more wrapped tests
+	lowbits - for each 4,8,16,32, or 64 bits this takes the lowest 
+		1,2,4,8,16, or 32 bits and routes them to the wrapped 
+		test(s), discarding the rest
 	shrink - 
 	FirstNofM - 
 	BWT - 

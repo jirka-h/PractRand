@@ -1,3 +1,24 @@
+version 0.95
+	tests
+		NearS2
+			Finds bias in a fair variety of PRNGs.  
+			It does not work well on anything bigger than 256 bits of state in its current configuration though.  
+			It looks for medium-short ranged correlations.  It has a footprint of 384 bits, a stride of 64 bits, and is reasonably fast.  
+			Currently trying it in the expanded test set, if it performs particularly well I might promote it to the core test set but that is unlikely.  
+		BRank
+			Revised to target a wider variety of matrix sizes.  
+		FPMulti
+			Rewritten.  Currently only FPG is enabled and working, but it seems to work adequately.  
+			I'm testing it out in the expanded test set.  It will probably stay there, though if additional subtests get written I suppose it might improve.  
+		DC7
+			I'm testing it out in the expanded test set, but it seems kinda useless so I may get rid of it.  
+		BirthdaySystematic64
+	RNGs
+		xsm64
+		xsm32
+	tools
+		--version
+
 version 0.94
 	RNGs
 		xsm64

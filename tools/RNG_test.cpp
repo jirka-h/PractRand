@@ -4,12 +4,13 @@
 #include <cmath>
 #include <ctime>
 #include <cstring>
-#include <string>
+//#include <string>
 #include <map>
 #include <vector>
 #include <set>
 #include <list>
 #include <sstream>
+#include <memory>
 
 //master header, includes everything in PractRand for both 
 //  practical usage and research... 
@@ -186,7 +187,7 @@ double print_result(const PractRand::TestResult &result, bool print_header = fal
 	if (true) {// 14 characters?
 		if (result.type == result.TYPE_PASSFAIL)
 			std::printf("  %s      ", result.get_pvalue() ? "\"pass\"" : "\"fail\"");
-		else if (result.type == result.TYPE_RAW)
+		else if (result.type == result.TYPE_RAW || result.type == result.TYPE_UNKNOWN)
 			std::printf("              ");
 		else if (result.type == result.TYPE_BAD_P || result.type == result.TYPE_GOOD_P || result.type == result.TYPE_RAW_NORMAL) {
 			double p = result.get_pvalue();
@@ -284,11 +285,11 @@ double print_result(const PractRand::TestResult &result, bool print_header = fal
 
 const char *seed_str = NULL;
 
-void show_checkpoint(TestManager *tman, int mode, Uint64 seed, double time, bool smart_thresholds, double threshold, bool end_on_failure) {
-	std::printf("rng=%s", tman->get_rng()->get_name().c_str());
+void show_checkpoint(TestManager &tman, int mode, Uint64 seed, double time, bool smart_thresholds, double threshold, bool end_on_failure) {
+	std::printf("rng=%s", tman.get_rng()->get_name().c_str());
 
 	std::printf(", seed=");
-	if (tman->get_rng()->get_flags() & PractRand::RNGs::FLAG::SEEDING_UNSUPPORTED) {
+	if (tman.get_rng()->get_flags() & PractRand::RNGs::FLAG::SEEDING_UNSUPPORTED) {
 		if (seed_str) std::printf("%s", seed_str);
 		else std::printf("unknown");
 	}
@@ -299,7 +300,7 @@ void show_checkpoint(TestManager *tman, int mode, Uint64 seed, double time, bool
 	std::printf("\n");
 
 	std::printf("length= ");
-	Uint64 length = tman->get_blocks_so_far() * Tests::TestBlock::SIZE;
+	Uint64 length = tman.get_blocks_so_far() * Tests::TestBlock::SIZE;
 	double log2b = std::log(double(length)) / std::log(2.0);
 	const char *unitstr[6] = {"kilobyte", "megabyte", "gigabyte", "terabyte", "petabyte", "exabyte"};
 	int units = int(std::floor(log2b / 10)) - 1;
@@ -314,7 +315,7 @@ void show_checkpoint(TestManager *tman, int mode, Uint64 seed, double time, bool
 	else std::printf("%.0f seconds\n", time);
 
 	std::vector<PractRand::TestResult> results;
-	tman->get_results(results);
+	tman.get_results(results);
 	double total_weight = 0, min_weight = 9999999;
 	for (int i = 0; i < results.size(); i++) {
 		double weight = results[i].get_weight();
@@ -450,6 +451,8 @@ bool interpret_seed(const std::string &seedstr, Uint64 &seed) {
 #include "PractRand/Tests/FPF.h"
 #include "PractRand/Tests/DistFreq4.h"
 #include "PractRand/Tests/Gap16.h"
+#include "PractRand/Tests/BRank.h"
+#include "PractRand/Tests/NearSeq.h"
 PractRand::Tests::ListOfTests testset_BirthdaySystematic() {
 	//return PractRand::Tests::ListOfTests(new PractRand::Tests::BirthdayAlt(10), new PractRand::Tests::Birthday32());
 	//return PractRand::Tests::ListOfTests(new PractRand::Tests::BirthdayAlt(22));
@@ -468,7 +471,8 @@ PractRand::Tests::ListOfTests testset_experimental() {
 	//return PractRand::Tests::ListOfTests(new PractRand::Tests::BirthdayLamda1(20));
 	//return PractRand::Tests::ListOfTests(new PractRand::Tests::Rep16());
 	//return PractRand::Tests::ListOfTests(new PractRand::Tests::FPMulti());
-	return PractRand::Tests::ListOfTests(new Tests::FPF(4, 14, 6));
+	return PractRand::Tests::ListOfTests(new PractRand::Tests::NearSeq2());
+	//return PractRand::Tests::ListOfTests(new Tests::mergewalk());
 }
 struct UnfoldedTestSet {
 	int number;
@@ -488,37 +492,100 @@ int lookup_te_value(int te) {
 		if (test_sets[i].number == -1) return -1;
 	}
 }
+void print_recommended_rng_list() {
+	int n = 0;
+	const int NAME_WIDTH = 15;
+	const int LINE_WIDTH = 78;
+	int pos = 0;
+	while (PractRand::RNG_Sets::recommended_rngs[n]) {
+		const char *name = PractRand::RNG_Sets::recommended_rngs[n];
+		int len = std::strlen(name);
+		std::printf("%s%*s", name, NAME_WIDTH - len, "");
+		if (len < NAME_WIDTH) len = NAME_WIDTH;
+		pos += len;
+		if (pos + NAME_WIDTH > LINE_WIDTH) {
+			std::printf("\n");
+			pos = 0;
+		}
+		n++;
+	}
+	if (pos) std::printf("\n");
+}
+void print_reference_rng_list() {
+	std::printf("list of all RNGs in the reference set:\n");
+	const char **master_list[] = {
+		PractRand::RNG_Sets::nonrecommended_simple,
+		PractRand::RNG_Sets::nonrecommended_nonlcg,
+		PractRand::RNG_Sets::nonrecommended_lcgish,
+		PractRand::RNG_Sets::nonrecommended_cbuf,
+		PractRand::RNG_Sets::nonrecommended_indirect,
+		NULL
+	};
+	int which_list = 0;
+	int index_into_list = 0;
+	const int NAME_WIDTH = 19;
+	const int LINE_WIDTH = 78;
+	int pos = 0;
+	while (master_list[which_list]) {
+		while (master_list[which_list][index_into_list]) {
+			const char *name = master_list[which_list][index_into_list];
+			int len = std::strlen(name);
+			std::printf("%s%*s", name, NAME_WIDTH - len, "");
+			if (len < NAME_WIDTH) len = NAME_WIDTH;
+			pos += len;
+			if (pos + NAME_WIDTH > LINE_WIDTH) {
+				std::printf("\n");
+				pos = 0;
+			}
+			index_into_list++;
+		}
+		which_list ++;
+		index_into_list = 0;
+	}
+	if (pos) std::printf("\n");
+}
+
+const char *get_exec_name(const char *argv0) {
+	const char *p = std::strpbrk(argv0, "/\\");
+	if (p) return get_exec_name(p + 1);
+	else return argv0;
+}
 
 int main(int argc, char **argv) {
 	PractRand::initialize_PractRand();
-	std::printf("RNG_test using PractRand version %s\n", PractRand::version_str);
+	const char *name = get_exec_name(argv[0]);
+	std::printf("%s using PractRand version %s\n", name, PractRand::version_str);
 #ifdef WIN32 // needed to allow binary stdin on windows
 	_setmode( _fileno(stdin), _O_BINARY);
 #endif
+	using std::strcmp;
 	if (argc <= 1) {
-		std::printf("usage: %s RNG_name [options]  --  runs tests on RNG_name\n", argv[0]);
-		std::printf("or: %s -help  --  displays more instructions\n", argv[0]);
-		std::printf("or: %s -version  --  displays version information\n", argv[0]);
+		std::printf("usage: %s RNG_name [options]  --  runs tests on RNG_name\n", name);
+		std::printf("or: %s  --  use no command line options to see this message\n", name);
+		std::printf("or: %s --help  --  displays more instructions\n", name);
+		std::printf("or: %s --version  --  displays version information\n", name);
 		std::printf("RNG_name can be the name of any PractRand recommended RNG (example: sfc16) or\n");
 		std::printf("non-recommended RNG (example: mm32) or transformed RNG (exmple: SShrink(sfc16).\n");
 		//           12345678901234567890123456789012345678901234567890123456789012345678901234567890
 		std::printf("Alternatively, use stdin as an RNG name to read raw binay data piped in from an\n");
 		std::printf("external RNG.\n");
 		std::printf("options available include -a, -e, -p, -tf, -te, -ttnormal, -ttseed64, -ttep,\n");
-		std::printf("-tlmin, -tlmax, -tlshow, -multithreaded, -singlethreaded, and -seed.\n");
-		std::printf("For more information run: %s -help\n\n", argv[0]);
+		std::printf("-tlmin, -tlmax, -tlshow, -multithreaded, -singlethreaded, -seed, \n");
+		std::printf("-list_recommended_rngs, and -list_reference_rngs.\n");
+		std::printf("For more information run: %s --help\n\n", name);
 		std::exit(0);
 	}
 	if (!strcmp(argv[1], "-version") || !strcmp(argv[1], "--version") || !strcmp(argv[1], "-v")) {
-		std::printf("RNG_test version %s\n", PractRand::version_str);
+		std::printf("%s version %s\n", name, PractRand::version_str);
 		// arbitrarily declaring the version number of RNG_test to match the version number of PractRand
 		std::printf("A command line tool for testing RNGs with the PractRand library.\n");
 		std::exit(0);
 	}
 	if (!strcmp(argv[1], "-help") || !strcmp(argv[1], "--help") || !strcmp(argv[1], "-h")) {
-		std::printf("syntax: %s RNG_name [options]\n", argv[0]);
-		std::printf("or: %s -help (to see this message)\n", argv[0]);
-		std::printf("or: %s -version (to see version number)\n", argv[0]);
+		std::printf("syntax: %s RNG_name [options]\n", name);
+		std::printf("or: %s  (use no command line options to see brief overview)\n", name);
+		std::printf("or: %s --help  (to see this message)\n", name);
+		std::printf("or: %s --version  (to see version number)\n", name);
 		std::printf("A command line tool for testing RNGs with the PractRand library.\n");
 		std::printf("RNG names:\n");
 		std::printf("  To use an external RNG, use stdin as an RNG name and pipe in the random\n");
@@ -623,6 +690,10 @@ int main(int argc, char **argv) {
 		std::printf("                  no seed is specified then a seed will be chosen randomly.  \n");
 		std::printf("                  The value should be expressed in hexadecimal.  An '0x' prefix\n");
 		std::printf("                  on the seed is acceptable but not necessary.\n");
+		std::printf("  -list_recommended_rngs  List the names of all recommended PRNGs.\n");
+		std::printf("  -list_reference_rngs    List the names of all PRNGs used Tests_results.txt.\n");
+		std::printf("                          These are (mostly) bad PRNGs used as a reference set\n");
+		std::printf("                          for comparing different PRNG test suites.\n");
 		std::printf("notes on lengths:\n");
 		//           12345678901234567890123456789012345678901234567890123456789012345678901234567890
 		std::printf("  Each of the test length options requires a field named LENGTH.  These fields\n");
@@ -662,7 +733,7 @@ int main(int argc, char **argv) {
 	Seeder_MetaRNG::register_name();
 	EntropyPool_MetaRNG::register_name();
 	std::string errmsg;
-	RNGs::vRNG *rng = RNG_Factories::create_rng(argv[1], &errmsg);
+	std::unique_ptr<RNGs::vRNG> rng( RNG_Factories::create_rng(argv[1], &errmsg) );
 	if (!rng) {
 		if (errmsg.empty()) std::fprintf(stderr, "unrecognized RNG name.  aborting.\n");
 		else std::fprintf(stderr, "%s\n", errmsg.c_str());
@@ -746,6 +817,14 @@ int main(int argc, char **argv) {
 		//-seed SEED
 		else if (!std::strcmp(argv[i], "-multithreaded")) use_multithreading = true;
 		else if (!std::strcmp(argv[i], "-singlethreaded")) use_multithreading = false;
+		else if (!std::strcmp(argv[i], "-list_recommended_rngs")) {
+			print_recommended_rng_list();
+			std::exit(0);
+		}
+		else if (!std::strcmp(argv[i], "-list_reference_rngs")) {
+			print_reference_rng_list();
+			std::exit(0);
+		}
 		else if (!std::strcmp(argv[i], "-skip_selftest")) do_self_test = false;
 		else if (!std::strcmp(argv[i], "-seed")) {
 			if (params_left < 1) {std::printf("command line option %s must be followed by a value\n", argv[i]); std::exit(0);}
@@ -811,16 +890,17 @@ int main(int argc, char **argv) {
 	}
 	known_good.seed(seed + 1);//the +1 is there just in case the RNG uses the same algorithm as the known good RNG
 
-	PractRand::RNGs::vRNG *testing_rng;
+	//PractRand::RNGs::vRNG *testing_rng;
 	if (mode == 0) {
 		rng->seed(seed);
-		testing_rng = rng;
+		//testing_rng = rng;
 	}
 	else if (mode == 1) {
 		//it would be nice to print a warning here for RNGs that use generic integer seeding
 		//but that's a little difficult atm as there's no way to query whether an RNG does so
-		testing_rng = new Seeder_MetaRNG(rng);
-		testing_rng->seed(seed);
+		rng.reset(new Seeder_MetaRNG(rng.release()));
+		//testing_rng = new Seeder_MetaRNG(rng);
+		//testing_rng->seed(seed);
 	}
 	else if (mode == 2) {
 		if (!(rng->get_flags() & PractRand::RNGs::FLAG::SUPPORTS_ENTROPY_ACCUMULATION)) {
@@ -858,16 +938,17 @@ int main(int argc, char **argv) {
 		}
 		rng->seed(seed);
 		//I'd like to test varying length entropy strings, but known good EPs are failing eventually when varying length is allowed for some reason
-		testing_rng = new EntropyPool_MetaRNG(rng,48,64);
-		testing_rng->seed(seed);
+		rng.reset(new EntropyPool_MetaRNG(rng.release(), 48, 64));
+		//testing_rng = new EntropyPool_MetaRNG(rng, 48, 64);
+		//testing_rng->seed(seed);
 	}
 	else {
 		std::printf("invalid mode, aborting\n");
 		std::exit(1);
 	}
 
-	std::printf("RNG = %s, seed = ", testing_rng->get_name().c_str());
-	if (testing_rng->get_flags() & PractRand::RNGs::FLAG::SEEDING_UNSUPPORTED) {
+	std::printf("RNG = %s, seed = ", rng->get_name().c_str());
+	if (rng->get_flags() & PractRand::RNGs::FLAG::SEEDING_UNSUPPORTED) {
 		if (seed_str) std::printf("%s", seed_str);
 		else std::printf("unknown");
 	}
@@ -878,7 +959,7 @@ int main(int argc, char **argv) {
 	const char *folding_names[3] = {"none", "standard", "extra"};
 	std::printf("\ntest set = %s, folding = %s", test_sets[test_set_index].name, folding_names[folding]);
 	if (folding == 1) {
-		int native_bits = testing_rng->get_native_output_size();
+		int native_bits = rng->get_native_output_size();
 		if (native_bits > 0) std::printf(" (%d bit)", native_bits);
 		else std::printf("(unknown format)");
 	}
@@ -889,19 +970,19 @@ int main(int argc, char **argv) {
 	if (test_set_index == -1) { std::printf("internal error\n"); std::exit(1); }
 	if (false) ;
 	else if (folding == 0) tests = test_sets[test_set_index].callback();
-	else if (folding == 1) tests = Tests::Batteries::apply_standard_foldings(testing_rng, test_sets[test_set_index].callback);
+	else if (folding == 1) tests = Tests::Batteries::apply_standard_foldings(rng.get(), test_sets[test_set_index].callback);
 	else if (folding == 2) tests = Tests::Batteries::apply_extended_foldings(test_sets[test_set_index].callback);
 	else { std::printf("internal error\n"); std::exit(1); }
 
 //	Tests::ListOfTests tests = Tests::Batteries::get_expanded_standard_tests(rng);
 #if defined MULTITHREADING_SUPPORTED
-	TestManager *tman;
-	if (use_multithreading) tman = new MultithreadedTestManager(&tests, &known_good);
-	else tman = new TestManager(&tests, &known_good);
+	std::unique_ptr<TestManager> tman;
+	if (use_multithreading) tman.reset( new MultithreadedTestManager(&tests, &known_good));
+	else tman.reset( new TestManager(&tests, &known_good));
 #else
-	TestManager *tman = new TestManager(&tests, &known_good);
+	std::unique_ptr<TestManager> tman(new TestManager(&tests, &known_good));
 #endif
-	tman->reset(testing_rng);
+	tman->reset(rng.get());
 
 	Uint64 blocks_tested = 0;
 	bool already_shown = false;
@@ -920,16 +1001,16 @@ int main(int argc, char **argv) {
 			}
 			int action = show_datas.begin()->second;
 			if (action == TL_SHOW) {
-				if (!already_shown) show_checkpoint(tman, mode, seed, time_passed, smart_thresholds, threshold, end_on_failure);
+				if (!already_shown) show_checkpoint(*tman, mode, seed, time_passed, smart_thresholds, threshold, end_on_failure);
 				already_shown = true;
 			}
 			else if (action == TL_MIN) {
 				showing_powers_of_2 = true;
-				if (!already_shown) show_checkpoint(tman, mode, seed, time_passed, smart_thresholds, threshold, end_on_failure);
+				if (!already_shown) show_checkpoint(*tman, mode, seed, time_passed, smart_thresholds, threshold, end_on_failure);
 				already_shown = true;
 			}
 			else if (action == TL_MAX) {
-				if (!already_shown) show_checkpoint(tman, mode, seed, time_passed, smart_thresholds, threshold, end_on_failure);
+				if (!already_shown) show_checkpoint(*tman, mode, seed, time_passed, smart_thresholds, threshold, end_on_failure);
 				return 0;
 			}
 			else {std::printf("internal error: unrecognized test length code, aborting\n");std::exit(1);}
@@ -941,12 +1022,12 @@ int main(int argc, char **argv) {
 			int action = show_times.begin()->second;
 			show_times.erase(show_times.begin());
 			if (action == TL_SHOW) {
-				if (!already_shown) show_checkpoint(tman, mode, seed, time_passed, smart_thresholds, threshold, end_on_failure);
+				if (!already_shown) show_checkpoint(*tman, mode, seed, time_passed, smart_thresholds, threshold, end_on_failure);
 				already_shown = true;
 			}
 			else if (action == TL_MIN) showing_powers_of_2 = true;
 			else if (action == TL_MAX) {
-				if (!already_shown) show_checkpoint(tman, mode, seed, time_passed, smart_thresholds, threshold, end_on_failure);
+				if (!already_shown) show_checkpoint(*tman, mode, seed, time_passed, smart_thresholds, threshold, end_on_failure);
 				return 0;
 			}
 			else {std::printf("internal error: unrecognized test length code, aborting\n");std::exit(1);}
@@ -954,7 +1035,7 @@ int main(int argc, char **argv) {
 
 		if (blocks_tested == next_power_of_2) {
 			if (showing_powers_of_2) {
-				if (!already_shown) show_checkpoint(tman, mode, seed, time_passed, smart_thresholds, threshold, end_on_failure);
+				if (!already_shown) show_checkpoint(*tman, mode, seed, time_passed, smart_thresholds, threshold, end_on_failure);
 				already_shown = true;
 			}
 			next_power_of_2 <<= 1;

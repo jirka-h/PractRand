@@ -42,17 +42,19 @@ namespace PractRand {
 			ListOfTests get_core_tests() {
 				return Tests::ListOfTests(
 					//major tests - we spend a lot of time on them, and they catch a lot of stuff
-					new Tests::BCFN(2, 13, true), //        1.6 s/GB in isolation, +1.4 seconds in combined test runs
-					new Tests::DistC6(9, 0, 1, 0, 0), //    1.8 s/GB in isolation, +1.5 seconds in combined test runs
-					new Tests::Gap16(),//                   2.4 s/GB in isolation, +2.1 seconds in combined test runs
-					new Tests::FPF(4, 14, 6), //            1.8 s/GB in isolation, +1.5 seconds in combined test runs
+					new Tests::BCFN(2, 13, true),	//        1.5 s/GB in isolation, +1.4 seconds in combined test runs
+					new Tests::DistC6(9, 0, 1, 0, 0),	//    1.7 s/GB in isolation, +1.5 seconds in combined test runs
+					new Tests::Gap16() ,	//                2.4 s/GB in isolation, +2.1 seconds in combined test runs
+					new Tests::FPF(4, 14, 6),	//            1.7 s/GB in isolation, +1.5 seconds in combined test runs
 
 					//minor tests - carefully arranged to use very little resources, and catch a few categories that slip by the major tests
-					new Tests::BRank(12), //                0.7 s/GB in isolation, +0.3 seconds in combined test runs - binary matrix rank ends up catching a surprising amount of PRNGs for how specialized it is
-					new Tests::mod3n(5),  //                0.5 s/GB in isolation, +0.1 seconds in combined runs - the major tests rely upon hamming weights a lot, this catches PRNGs that ought to be vulnerable to those tests but manage to keep their patterns hidden when just looking at hamming weights
-					new Tests::TripleMirrorFreqN(2),	//	about +0.1 s/GB in combined test runs - mostly this catches LCGs
+					new Tests::BRank(12),	//                0.5 s/GB in isolation, +0.3 seconds in combined test runs - binary matrix rank ends up catching a surprising amount of PRNGs for how specialized it is
+					//new Tests::BRank_old(12),	//            0.5 s/GB in isolation, +0.3 seconds in combined test runs - binary matrix rank ends up catching a surprising amount of PRNGs for how specialized it is
+					new Tests::mod3n(5),	//                0.6 s/GB in isolation, +0.1 seconds in combined runs - the major tests rely upon hamming weights a lot, this catches PRNGs that ought to be vulnerable to those tests but manage to keep their patterns hidden when just looking at hamming weights
+					new Tests::TripleMirrorFreqN(2),	//	  0.4 s/GB in isolation, +0.1 seconds in combined test runs - mostly this catches LCGs
 
 					//experimentals - just for testing, disable for releases
+					//new Tests::NearSeq2()  ,	//            1.0 s/GB in isolation, +0.8 seconds in combined test runs
 					//new Tests::Birthday32(),
 					//new Tests::Birthday64(),
 					//new Tests::BirthdayLambda1(26),
@@ -161,6 +163,7 @@ namespace PractRand {
 					new Tests::mod3n(0),//				7.5 s/GB with EXP==9, 8.1 with EXP==10
 					new Tests::BRank(18), //			~4.0 s/GB          18
 					new Tests::TripleMirrorFreqN(0),//	?
+					new Tests::NearSeq2()  ,	//            1.0 s/GB in isolation, +0.8 seconds in combined test runs
 
 					//short range tests:
 					new Tests::DistC7(9,0, 1,0,0),//	3.3->2.7 s/GB
@@ -185,8 +188,6 @@ namespace PractRand {
 					new Tests::FPMulti(),//				1.3 s/GB on my current system, which seems to be 1.5x to 2x faster than what the other measurements here were made on?
 					new Tests::Gap16(),//				3.4->3.1 s/GB
 //*/
-					//new Tests::NearSeq(),  //			???
-					//new Tests::NearSeq2(),  //			???
 					//new Tests::Coup16(),  //			???
 					//new Tests::CoupGap(), //			???
 					NULL

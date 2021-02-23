@@ -105,6 +105,9 @@
     <ClCompile Include="..\..\src\tests.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\src\RNGs\rarns.cpp">
+      <Filter>Source Files\RNGs</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\include\PractRand\config.h">
@@ -245,9 +248,6 @@
     <ClInclude Include="..\..\include\PractRand\Tests\mod3.h">
       <Filter>Header Files\Tests</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\include\PractRand\Tests\nearseq.h">
-      <Filter>Header Files\Tests</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\include\PractRand\Tests\coup16.h">
       <Filter>Header Files\Tests</Filter>
     </ClInclude>
@@ -266,8 +266,20 @@
     <ClInclude Include="..\..\include\PractRand\RNGs\efiix64x48.h">
       <Filter>Header Files\RNGs</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\include\PractRand\Tests\birthday.h">
+    <ClInclude Include="..\..\include\PractRand\Tests\NearSeq.h">
       <Filter>Header Files\Tests</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\PractRand\Tests\Birthday.h">
+      <Filter>Header Files\Tests</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\PractRand\RNGs\rarns16.h">
+      <Filter>Header Files\RNGs</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\PractRand\RNGs\rarns32.h">
+      <Filter>Header Files\RNGs</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\PractRand\RNGs\rarns64.h">
+      <Filter>Header Files\RNGs</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

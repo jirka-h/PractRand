@@ -21,7 +21,7 @@ public:
 	//known_good_ = sometimes the tests or test manager need good random numbers for some reason
 	//max_buffer_amount_ = size in kilobytes of the maximum amount of random data to keep buffered up at on time
 
-	virtual ~TestManager();//destructor (destroys the tests in the ListOfTests)
+	virtual ~TestManager();//destructor (destroys the tests in the ListOfTests ; does NOT destroy the RNGs)
 
 	virtual void reset(PractRand::RNGs::vRNG *rng_ = NULL);//resets contents for starting a new test run ; if rng is NULL then it will reuse the current RNG
 

@@ -69,6 +69,10 @@ void print_usage(const char *program_name) {
 	std::cerr << "usage:\n\t" << program_name << " RNG_name name\n";
 	std::cerr << "  It prints the result of (RNG)->get_name()\n";
 	std::cerr << "  Which is often the same as the RNG_name parameter, but not always.\n";
+	std::cerr << "usage:\n\t" << program_name << " --version\n";
+	std::cerr << "  Will print the version number.\n";
+	std::cerr << "usage:\n\t" << program_name << " --help\n";
+	std::cerr << "  Will print this message.  So will any unrecognized command line.\n";
 	exit(0);
 }
 
@@ -81,11 +85,30 @@ void signal_handler(int param)
 
 #include "SeedingTester.h"
 
+const char *get_exec_name(const char *argv0) {
+	const char *p = std::strpbrk(argv0, "/\\");
+	if (p) return get_exec_name(p + 1);
+	else return argv0;
+}
+
 int main(int argc, char **argv) {
 #ifdef WIN32
 	_setmode( _fileno(stdout), _O_BINARY); // needed to allow binary stdout on windows
 #endif
+	if (argc <= 1) {
+		print_usage(argv[0]);
+	}
+	if (!std::strcmp(argv[1], "-version") || !std::strcmp(argv[1], "--version") || !std::strcmp(argv[1], "-v")) {
+		std::printf("%s version %s\n", get_exec_name(argv[0]), PractRand::version_str);
+		// arbitrarily declaring the version number of RNG_output to match the version number of PractRand
+		std::printf("A command line tool for generating a stream of random bytes.\n");
+		std::exit(0);
+	}
+	if (!std::strcmp(argv[1], "-help") || !std::strcmp(argv[1], "--help") || !std::strcmp(argv[1], "-h")) {
+		print_usage(get_exec_name(argv[0]));
+	}
 	if (argc < 3 || argc > 4) print_usage(argv[0]);
+
 	PractRand::initialize_PractRand();
 
 	RNG_Factories::register_recommended_RNGs();
@@ -106,6 +129,7 @@ int main(int argc, char **argv) {
 	if (_n <= 0 || _n >= 18446744073709551616.0) {
 		if (!strcmp(argv[2], "name")) {
 			std::printf("%s\n", rng->get_name().c_str());
+			delete rng;
 			exit(0);
 		}
 		else if (!strcmp(argv[2], "inf")) {
@@ -153,5 +177,6 @@ int main(int argc, char **argv) {
 	if (n && _n) {
 		std::cerr << "RNG_output ERROR: " << Uint64(_n) << " bytes were requested, but only " << (Uint64(_n) - n) << " bytes were written." << std::endl;
 	}
+	delete rng;
 	return 0;
 }

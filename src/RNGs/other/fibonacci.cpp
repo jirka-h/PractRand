@@ -402,7 +402,7 @@ namespace PractRand {
 
 
 				Uint32 ranrot32small::raw32() {
-					if (position) return buffer[--position];
+					/*if (position < LAG1) return buffer[position++];
 					for (unsigned long i = 0; i < LAG2; i++) {
 						buffer[i] =
 							((buffer[i + LAG1 - LAG1] << ROT1) | (buffer[i + LAG1 - LAG1] >> (sizeof(buffer[0]) * 8 - ROT1))) +
@@ -412,6 +412,19 @@ namespace PractRand {
 						buffer[i] =
 							((buffer[i - 0] << ROT1) | (buffer[i - 0] >> (sizeof(buffer[0]) * 8 - ROT1))) +
 							((buffer[i - LAG2] << ROT2) | (buffer[i - LAG2] >> (sizeof(buffer[0]) * 8 - ROT2)));
+					}
+					position = 0;
+					return buffer[position++];*/
+					if (position) return buffer[--position];
+					for (unsigned long i = LAG1 - 1; i >= LAG1 - LAG2; i--) {
+						buffer[i] =
+							((buffer[i + LAG1 - LAG1] << ROT1) | (buffer[i + LAG1 - LAG1] >> (sizeof(buffer[0]) * 8 - ROT1))) +
+							((buffer[i + LAG2 - LAG1] << ROT2) | (buffer[i + LAG2 - LAG1] >> (sizeof(buffer[0]) * 8 - ROT2)));
+					}
+					for (unsigned long i = LAG1 - LAG2 - 1; i >= 0; i--) {
+						buffer[i] =
+							((buffer[i + 0] << ROT1) | (buffer[i + 0] >> (sizeof(buffer[0]) * 8 - ROT1))) +
+							((buffer[i + LAG2] << ROT2) | (buffer[i + LAG2] >> (sizeof(buffer[0]) * 8 - ROT2)));
 					}
 					position = LAG1;
 					return buffer[--position];
@@ -424,15 +437,15 @@ namespace PractRand {
 				}
 				Uint32 ranrot32::raw32() {
 					if (position) return buffer[--position];
-					for (unsigned long i = 0; i < LAG2; i++) {
+					for (unsigned long i = LAG1 - 1; i >= LAG1 - LAG2; i--) {
 						buffer[i] =
 							((buffer[i + LAG1 - LAG1] << ROT1) | (buffer[i + LAG1 - LAG1] >> (sizeof(buffer[0]) * 8 - ROT1))) +
-							((buffer[i + LAG1 - LAG2] << ROT2) | (buffer[i + LAG1 - LAG2] >> (sizeof(buffer[0]) * 8 - ROT2)));
+							((buffer[i + LAG2 - LAG1] << ROT2) | (buffer[i + LAG2 - LAG1] >> (sizeof(buffer[0]) * 8 - ROT2)));
 					}
-					for (unsigned long i = LAG2; i < LAG1; i++) {
+					for (unsigned long i = LAG1 - LAG2 - 1; i >= 0; i--) {
 						buffer[i] =
-							((buffer[i - 0] << ROT1) | (buffer[i - 0] >> (sizeof(buffer[0]) * 8 - ROT1))) +
-							((buffer[i - LAG2] << ROT2) | (buffer[i - LAG2] >> (sizeof(buffer[0]) * 8 - ROT2)));
+							((buffer[i + 0] << ROT1) | (buffer[i + 0] >> (sizeof(buffer[0]) * 8 - ROT1))) +
+							((buffer[i + LAG2] << ROT2) | (buffer[i + LAG2] >> (sizeof(buffer[0]) * 8 - ROT2)));
 					}
 					position = LAG1;
 					return buffer[--position];
@@ -445,15 +458,15 @@ namespace PractRand {
 				}
 				Uint32 ranrot32big::raw32() {
 					if (position) return buffer[--position];
-					for (unsigned long i = 0; i < LAG2; i++) {
+					for (unsigned long i = LAG1 - 1; i >= LAG1 - LAG2; i--) {
 						buffer[i] =
 							((buffer[i + LAG1 - LAG1] << ROT1) | (buffer[i + LAG1 - LAG1] >> (sizeof(buffer[0]) * 8 - ROT1))) +
-							((buffer[i + LAG1 - LAG2] << ROT2) | (buffer[i + LAG1 - LAG2] >> (sizeof(buffer[0]) * 8 - ROT2)));
+							((buffer[i + LAG2 - LAG1] << ROT2) | (buffer[i + LAG2 - LAG1] >> (sizeof(buffer[0]) * 8 - ROT2)));
 					}
-					for (unsigned long i = LAG2; i < LAG1; i++) {
+					for (unsigned long i = LAG1 - LAG2 - 1; i >= 0; i--) {
 						buffer[i] =
-							((buffer[i - 0] << ROT1) | (buffer[i - 0] >> (sizeof(buffer[0]) * 8 - ROT1))) +
-							((buffer[i - LAG2] << ROT2) | (buffer[i - LAG2] >> (sizeof(buffer[0]) * 8 - ROT2)));
+							((buffer[i + 0] << ROT1) | (buffer[i + 0] >> (sizeof(buffer[0]) * 8 - ROT1))) +
+							((buffer[i + LAG2] << ROT2) | (buffer[i + LAG2] >> (sizeof(buffer[0]) * 8 - ROT2)));
 					}
 					position = LAG1;
 					return buffer[--position];
@@ -469,12 +482,19 @@ namespace PractRand {
 				}
 				Uint32 ranrot3tap32small::raw32() {
 					if (position) return buffer[--position];
-					Uint32 old = buffer[LAG1 - 1];
+					/*Uint32 old = buffer[LAG1 - 1];
 					for (unsigned long i = 0; i < LAG2; i++) {
 						buffer[i] = old = func(buffer[i + LAG1 - LAG1], buffer[i + LAG1 - LAG2], old);
 					}
 					for (unsigned long i = LAG2; i < LAG1; i++) {
 						buffer[i] = old = func(buffer[i], buffer[i - LAG2], old);
+					}*/
+					Uint32 old = buffer[0];
+					for (unsigned long i = LAG1 - 1; i >= LAG1 - LAG2; i--) {
+						buffer[i] = old = func(buffer[i], buffer[i + LAG2 - LAG1], old);
+					}
+					for (unsigned long i = LAG1 - LAG2 - 1; i >= 0; i--) {
+						buffer[i] = old = func(buffer[i], buffer[i + LAG2], old);
 					}
 					position = LAG1;
 					return buffer[--position];
@@ -490,12 +510,12 @@ namespace PractRand {
 				}
 				Uint32 ranrot3tap32::raw32() {
 					if (position) return buffer[--position];
-					Uint32 old = buffer[LAG1 - 1];
-					for (unsigned long i = 0; i < LAG2; i++) {
-						buffer[i] = old = func(buffer[i + LAG1 - LAG1], buffer[i + LAG1 - LAG2], old);
+					Uint32 old = buffer[0];
+					for (unsigned long i = LAG1 - 1; i >= LAG1 - LAG2; i--) {
+						buffer[i] = old = func(buffer[i], buffer[i + LAG2 - LAG1], old);
 					}
-					for (unsigned long i = LAG2; i < LAG1; i++) {
-						buffer[i] = old = func(buffer[i], buffer[i - LAG2], old);
+					for (unsigned long i = LAG1 - LAG2 - 1; i >= 0; i--) {
+						buffer[i] = old = func(buffer[i], buffer[i + LAG2], old);
 					}
 					position = LAG1;
 					return buffer[--position];
@@ -511,12 +531,12 @@ namespace PractRand {
 				}
 				Uint32 ranrot3tap32big::raw32() {
 					if (position) return buffer[--position];
-					Uint32 old = buffer[LAG1 - 1];
-					for (unsigned long i = 0; i < LAG2; i++) {
-						buffer[i] = old = func(buffer[i + LAG1 - LAG1], buffer[i + LAG1 - LAG2], old);
+					Uint32 old = buffer[0];
+					for (unsigned long i = LAG1 - 1; i >= LAG1 - LAG2; i--) {
+						buffer[i] = old = func(buffer[i], buffer[i + LAG2 - LAG1], old);
 					}
-					for (unsigned long i = LAG2; i < LAG1; i++) {
-						buffer[i] = old = func(buffer[i], buffer[i - LAG2], old);
+					for (unsigned long i = LAG1 - LAG2 - 1; i >= 0; i--) {
+						buffer[i] = old = func(buffer[i], buffer[i + LAG2], old);
 					}
 					position = LAG1;
 					return buffer[--position];
@@ -533,12 +553,12 @@ namespace PractRand {
 				}
 				Uint32 ranrot32hetsmall::raw32() {
 					if (position) return buffer[--position];
-					Uint32 old = buffer[LAG1 - 1];
-					for (unsigned long i = 0; i < LAG2; i++) {
-						buffer[i] = old = func(buffer[i + LAG1 - LAG1], buffer[i + LAG1 - LAG2], old);
+					Uint32 old = buffer[0];
+					for (unsigned long i = LAG1 - 1; i >= LAG1 - LAG2; i--) {
+						buffer[i] = old = func(buffer[i], buffer[i + LAG2 - LAG1], old);
 					}
-					for (unsigned long i = LAG2; i < LAG1; i++) {
-						buffer[i] = old = func(buffer[i], buffer[i - LAG2], old);
+					for (unsigned long i = LAG1 - LAG2 - 1; i >= 0; i--) {
+						buffer[i] = old = func(buffer[i], buffer[i + LAG2], old);
 					}
 					position = LAG1;
 					return buffer[--position];
@@ -555,12 +575,12 @@ namespace PractRand {
 				}
 				Uint32 ranrot32het::raw32() {
 					if (position) return buffer[--position];
-					Uint32 old = buffer[LAG1 - 1];
-					for (unsigned long i = 0; i < LAG2; i++) {
-						buffer[i] = old = func(buffer[i + LAG1 - LAG1], buffer[i + LAG1 - LAG2], old);
+					Uint32 old = buffer[0];
+					for (unsigned long i = LAG1 - 1; i >= LAG1 - LAG2; i--) {
+						buffer[i] = old = func(buffer[i], buffer[i + LAG2 - LAG1], old);
 					}
-					for (unsigned long i = LAG2; i < LAG1; i++) {
-						buffer[i] = old = func(buffer[i], buffer[i - LAG2], old);
+					for (unsigned long i = LAG1 - LAG2 - 1; i >= 0; i--) {
+						buffer[i] = old = func(buffer[i], buffer[i + LAG2], old);
 					}
 					position = LAG1;
 					return buffer[--position];
@@ -577,12 +597,12 @@ namespace PractRand {
 				}
 				Uint32 ranrot32hetbig::raw32() {
 					if (position) return buffer[--position];
-					Uint32 old = buffer[LAG1 - 1];
-					for (unsigned long i = 0; i < LAG2; i++) {
-						buffer[i] = old = func(buffer[i + LAG1 - LAG1], buffer[i + LAG1 - LAG2], old);
+					Uint32 old = buffer[0];
+					for (unsigned long i = LAG1 - 1; i >= LAG1 - LAG2; i--) {
+						buffer[i] = old = func(buffer[i], buffer[i + LAG2 - LAG1], old);
 					}
-					for (unsigned long i = LAG2; i < LAG1; i++) {
-						buffer[i] = old = func(buffer[i], buffer[i - LAG2], old);
+					for (unsigned long i = LAG1 - LAG2 - 1; i >= 0; i--) {
+						buffer[i] = old = func(buffer[i], buffer[i + LAG2], old);
 					}
 					position = LAG1;
 					return buffer[--position];
@@ -595,15 +615,15 @@ namespace PractRand {
 				}
 
 				Uint16 fibmul16of32::raw16() {
-					if (position) return Uint16(buffer[--position] >> 16);
+					if (position < LAG1) return Uint16(buffer[position++] >> 16);
 					for (unsigned long i = 0; i < LAG2; i++) {
-						buffer[i] = buffer[i+LAG1-LAG1] * buffer[i+LAG1-LAG2];
+						buffer[i] = buffer[i] * buffer[i+LAG1-LAG2];
 					}
 					for (unsigned long i = LAG2; i < LAG1; i++) {
 						buffer[i] = buffer[i] * buffer[i-LAG2];
 					}
-					position = LAG1;
-					return Uint16(buffer[--position] >> 16);
+					position = 0;
+					return Uint16(buffer[position++] >> 16);
 				}
 				std::string fibmul16of32::get_name() const {return "fibmul16of32";}
 				void fibmul16of32::walk_state(StateWalkingObject *walker) {
@@ -613,15 +633,15 @@ namespace PractRand {
 					for (int i = 0; i < LAG1; i++) buffer[i] |= 1;
 				}
 				Uint32 fibmul32of64::raw32() {
-					if (position) return Uint32(buffer[--position] >> 32);
+					if (position < LAG1) return Uint32(buffer[position++] >> 32);
 					for (unsigned long i = 0; i < LAG2; i++) {
 						buffer[i] = buffer[i+LAG1-LAG1] * buffer[i+LAG1-LAG2];
 					}
 					for (unsigned long i = LAG2; i < LAG1; i++) {
 						buffer[i] = buffer[i] * buffer[i-LAG2];
 					}
-					position = LAG1;
-					return Uint32(buffer[--position] >> 32);
+					position = 0;
+					return Uint32(buffer[position++] >> 32);
 				}
 				std::string fibmul32of64::get_name() const {return "fibmul32of64";}
 				void fibmul32of64::walk_state(StateWalkingObject *walker) {
@@ -631,7 +651,7 @@ namespace PractRand {
 					for (int i = 0; i < LAG1; i++) buffer[i] |= 1;
 				}
 				Uint16 fibmulmix16::raw16() {
-					if (position) return buffer[--position];
+					if (position < LAG1) return buffer[position++];
 					Uint16 prev = buffer[LAG1 - 1];
 					enum {
 						SH1  = 0
@@ -642,19 +662,64 @@ namespace PractRand {
 						Uint16 a = buffer[i + LAG1 - LAG1];
 						Uint16 b = buffer[i + LAG1 - LAG2];
 						a = rotate16(a, SH1); b = rotate16(b, SH2); prev += rotate16(prev, SH3);
-						prev = buffer[i] = (a * (b | 1)) ^ prev;
+						Uint16 product = a * (b | 1);
+						//product ^= product >> 8; // fixes BRank failure
+						prev ^= product;
+						//prev ^= prev >> 8; // does NOT fix BRank failure
+						buffer[i] = prev;
 					}
 					for (unsigned long i = LAG2; i < LAG1; i++) {
 						Uint16 a = buffer[i];
 						Uint16 b = buffer[i - LAG2];
 						a = rotate16(a, SH1); b = rotate16(b, SH2); prev += rotate16(prev, SH3);
-						prev = buffer[i] = (a * (b | 1)) ^ prev;
+						Uint16 product = a * (b | 1);
+						//product ^= product >> 8; // fixes BRank failure
+						prev ^= product;
+						//prev ^= prev >> 8; // does NOT fix BRank failure
+						buffer[i] = prev;
 					}
-					position = LAG1;
-					return buffer[--position];
+					position = 0;
+					return buffer[position++];
 				}
 				std::string fibmulmix16::get_name() const { return "fibmulmix16"; }
 				void fibmulmix16::walk_state(StateWalkingObject *walker) {
+					walker->handle(position);
+					for (int i = 0; i < LAG1; i++) walker->handle(buffer[i]);
+					if (position >= LAG1) position %= LAG1;
+				}
+				Uint32 fibmulmix32::raw32() {
+					if (position < LAG1) return buffer[position++];
+					Uint32 prev = buffer[LAG1 - 1];
+					enum {
+						SH1 = 3
+						, SH2 = 5
+						, SH3 = 19
+					};
+					for (unsigned long i = 0; i < LAG2; i++) {
+						Uint32 a = buffer[i + LAG1 - LAG1];
+						Uint32 b = buffer[i + LAG1 - LAG2];
+						a = rotate32(a, SH1); b = rotate32(b, SH2); prev += rotate32(prev, SH3);
+						Uint32 product = a * (b | 1);
+						//product ^= product >> 16; // fixes BRank failure
+						prev ^= product;
+						//prev ^= prev >> 16; // does NOT fix BRank failure
+						buffer[i] = prev;
+					}
+					for (unsigned long i = LAG2; i < LAG1; i++) {
+						Uint32 a = buffer[i];
+						Uint32 b = buffer[i - LAG2];
+						a = rotate32(a, SH1); b = rotate32(b, SH2); prev += rotate32(prev, SH3);
+						Uint32 product = a * (b | 1);
+						//product ^= product >> 16; // fixes BRank failure
+						prev ^= product;
+						//prev ^= prev >> 16; // does NOT fix BRank failure
+						buffer[i] = prev;
+					}
+					position = 0;
+					return buffer[position++];
+				}
+				std::string fibmulmix32::get_name() const { return "fibmulmix32"; }
+				void fibmulmix32::walk_state(StateWalkingObject *walker) {
 					walker->handle(position);
 					for (int i = 0; i < LAG1; i++) walker->handle(buffer[i]);
 					if (position >= LAG1) position %= LAG1;
