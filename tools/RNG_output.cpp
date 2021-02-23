@@ -120,8 +120,8 @@ int main(int argc, char **argv) {
 	RNGs::vRNG *rng = RNG_Factories::create_rng(argv[1], &errmsg);
 
 	if (!rng) {
-		if (errmsg.empty()) { std::fprintf(stderr, "RNG_output ERROR: unrecognized RNG name\n"); print_usage(argv[0]); }
-		else { std::fprintf(stderr, "RNG_output ERROR: RNG_Factories returned error message:\n%s\n", errmsg.c_str()); exit(1); }
+		if (errmsg.empty()) { std::fprintf(stderr, "%s ERROR: unrecognized RNG name\n", argv[0]); print_usage(argv[0]); }
+		else { std::fprintf(stderr, "%s ERROR: RNG_Factories returned error message:\n%s\n", argv[0], errmsg.c_str()); exit(1); }
 	}
 
 	double _n = atof(argv[2]);//should be atol, but on 32 bit systems that's too limited
@@ -137,7 +137,7 @@ int main(int argc, char **argv) {
 			n = 0xFFFFffffFFFFffffull;
 		}
 		else {
-			std::fprintf(stderr, "RNG_output ERROR: invalid number of output bytes\n"); print_usage(argv[0]);
+			std::fprintf(stderr, "%s ERROR: invalid number of output bytes\n", argv[0]); print_usage(argv[0]);
 		}
 	}
 	else n = Uint64(_n);
@@ -145,7 +145,7 @@ int main(int argc, char **argv) {
 	if (argc == 3) rng->autoseed();
 	else {
 		Uint64 seed;
-		if (!interpret_seed(argv[3],seed)) {std::fprintf(stderr, "RNG_output ERROR: \"%s\" is not a valid 64 bit hexadecimal seed\n", argv[3]); std::exit(0);}
+		if (!interpret_seed(argv[3],seed)) {std::fprintf(stderr, "%s ERROR: \"%s\" is not a valid 64 bit hexadecimal seed\n", argv[0], argv[3]); std::exit(0);}
 		rng->seed(seed);
 	}
 
@@ -175,7 +175,7 @@ int main(int argc, char **argv) {
 		//std::cerr << "WARNING: Received signal " << signaled << ". Closing the application." << std::endl; // this was generating spurious error messages on linux
 	}
 	if (n && _n) {
-		std::cerr << "RNG_output ERROR: " << Uint64(_n) << " bytes were requested, but only " << (Uint64(_n) - n) << " bytes were written." << std::endl;
+		std::cerr << argv[0] << " ERROR: " << Uint64(_n) << " bytes were requested, but only " << (Uint64(_n) - n) << " bytes were written." << std::endl;
 	}
 	delete rng;
 	return 0;
