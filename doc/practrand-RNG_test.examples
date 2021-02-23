@@ -1,18 +1,18 @@
 [EXAMPLES]
-PractRand-RNG_test stdin </dev/urandom
+practrand-RNG_test stdin </dev/urandom
   Test quality of random numbers produced Linux's kernel urandom RNG
 
-PractRand-RNG_test jsf64 -tlmax 4G
+practrand-RNG_test jsf64 -tlmax 4G
   Test built-in Bob Jenkins Small Fast (Noncryptographic) PRNG, using maximum set length of 4GiB. See /usr/share/doc/practrand/RNG_engines.txt for the info about the built-in RNGs. 
 
-PractRand-RNG_test jsf64 -tlmax 4G -multithreaded
+practrand-RNG_test jsf64 -tlmax 4G -multithreaded
   Test built-in jsf64 PRNG, running the tests multithreaded.
 
-PractRand-RNG_output hc256 inf | PractRand-RNG_test stdin32 -tlmax 4G
-PractRand-RNG_test hc256 -tlmax 4G
+practrand-RNG_output hc256 inf | practrand-RNG_test stdin32 -tlmax 4G
+practrand-RNG_test hc256 -tlmax 4G
   Test first 4 GiB of HC-256 RNG. Compare performance of built-in RNG versus using pipe to pass the data from the external process. 
 
-bash -c "(\time PractRand-RNG_output hc256 $(bc <<< 4*2^30)) | (\time PractRand-RNG_test stdin32 -tlmax 4G -multithreaded)"
+bash -c "(\time practrand-RNG_output hc256 $(bc <<< 4*2^30)) | (\time practrand-RNG_test stdin32 -tlmax 4G -multithreaded)"
   Collecting performance data to test first 4GiB bytes of HC-256 RNG using the multithreaded test. 
 
 
