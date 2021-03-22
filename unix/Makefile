@@ -46,6 +46,7 @@ SRC_OBJS = \
 	RNGs/isaac.o \
 	RNGs/jsf.o \
 	RNGs/mt19937.o \
+	RNGs/rarns.o \
 	RNGs/salsa.o \
 	RNGs/sfc.o \
 	RNGs/sha2_based_pool.o \
@@ -60,9 +61,12 @@ SRC_OBJS = \
 LIB_OBJS = \
 	$(addprefix $(SRC)/,$(SRC_OBJS))
 
-$(BIN)/libpracrand.a: $(LIB_OBJS)
+$(BIN)/libpracrand.a: $(LIB_OBJS) | bindir
 	ar -r $@  $^
 	ranlib $@
+
+bindir:
+	mkdir -p ../bin
 
 $(BIN)/RNG_benchmark: $(TOOLS)/RNG_benchmark.o $(LIB)
 	$(CXX) -o $@ $^ $(LDFLAGS)
@@ -75,6 +79,9 @@ $(BIN)/RNG_test: $(TOOLS)/RNG_test.o $(LIB)
 
 $(BIN)/Test_calibration: $(TOOLS)/Test_calibration.o $(LIB)
 	$(CXX) -o $@ $^ $(LDFLAGS)
+
+$(BIN):
+	mkdir $@
 
 .PHONY: clean
 clean:
